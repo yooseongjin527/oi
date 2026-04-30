@@ -1,0 +1,199 @@
+/* ============================================
+   OI — admin.css
+   ============================================ */
+
+.admin-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 24px;
+    flex-wrap: wrap;
+    padding-bottom: 32px;
+    margin-bottom: 32px;
+    border-bottom: 1px solid var(--border);
+}
+.admin-eyebrow {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 999px;
+    background: var(--accent-soft);
+    color: var(--accent-hover);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.5px;
+    margin-bottom: 12px;
+}
+.admin-title {
+    font-size: 32px; font-weight: 700; letter-spacing: -0.02em;
+    margin: 0 0 6px;
+}
+.admin-sub { color: var(--text-secondary); margin: 0; font-size: 14px; }
+
+.admin-stats { display: flex; gap: 12px; }
+.stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 16px 24px;
+    min-width: 110px;
+    text-align: center;
+}
+.stat-value {
+    display: block;
+    font-family: var(--font-mono);
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--accent-hover);
+    line-height: 1;
+}
+.stat-label {
+    display: block;
+    margin-top: 6px;
+    font-size: 12px;
+    color: var(--text-tertiary);
+}
+
+/* ─── Section ────────────────────────────────── */
+.admin-section { margin-bottom: 48px; }
+.section-title {
+    font-size: 18px;
+    font-weight: 600;
+    margin: 0 0 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.badge {
+    display: inline-grid; place-items: center;
+    min-width: 22px; height: 22px;
+    padding: 0 7px;
+    border-radius: 999px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 700;
+}
+.badge--pending {
+    background: var(--warning);
+    color: #1a1300;
+}
+
+/* ─── Pending Cards ──────────────────────────── */
+.pending-list { display: flex; flex-direction: column; gap: 10px; }
+.pending-card {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    padding: 16px 20px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    flex-wrap: wrap;
+}
+.pending-card:hover { border-color: var(--border-strong); }
+
+.pending-username {
+    font-weight: 600;
+    font-size: 15px;
+    margin-bottom: 4px;
+}
+.pending-meta {
+    display: flex; gap: 8px; flex-wrap: wrap;
+    color: var(--text-tertiary);
+    font-size: 13px;
+}
+.meta-sep { color: var(--border-strong); }
+
+.pending-actions { display: flex; gap: 8px; }
+.pending-actions form { margin: 0; }
+
+/* ─── Buttons (size + danger) ───────────────── */
+.btn--sm { padding: 8px 16px; font-size: 13px; }
+.btn--danger {
+    background: rgba(242, 93, 93, 0.12);
+    color: var(--danger);
+    border: 1px solid rgba(242, 93, 93, 0.3);
+}
+.btn--danger:hover {
+    background: rgba(242, 93, 93, 0.2);
+    color: var(--danger);
+    border-color: var(--danger);
+}
+
+/* ─── User Table ─────────────────────────────── */
+.user-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+}
+.user-table thead th {
+    text-align: left;
+    padding: 12px 16px;
+    background: var(--surface-elevated);
+    color: var(--text-secondary);
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.4px;
+    text-transform: uppercase;
+    border-bottom: 1px solid var(--border);
+}
+.user-table tbody td {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    font-size: 14px;
+}
+.user-table tbody tr:last-child td { border-bottom: none; }
+.user-table .mono { font-family: var(--font-mono); color: var(--text-tertiary); }
+.user-table .dim { color: var(--text-tertiary); font-size: 13px; }
+
+/* ─── Status / Role Pills ────────────────────── */
+.status, .role {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.4px;
+}
+.status--approved { background: rgba(109, 217, 161, 0.12); color: var(--success); }
+.status--rejected { background: rgba(242, 93, 93, 0.12);   color: var(--danger); }
+.status--pending  { background: rgba(229, 177, 76, 0.12);  color: var(--warning); }
+
+.role--admin { background: var(--accent-soft); color: var(--accent-hover); }
+.role--user  { background: var(--surface-elevated); color: var(--text-secondary); }
+
+/* ─── Empty state ───────────────────────────── */
+.empty-state {
+    padding: 32px;
+    text-align: center;
+    color: var(--text-tertiary);
+    background: var(--surface);
+    border: 1px dashed var(--border-strong);
+    border-radius: var(--radius-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+}
+.empty-icon {
+    display: inline-grid; place-items: center;
+    width: 24px; height: 24px;
+    border-radius: 50%;
+    background: var(--success);
+    color: var(--bg);
+    font-weight: 700;
+    font-size: 13px;
+}
+
+/* ─── Responsive ─────────────────────────────── */
+@media (max-width: 640px) {
+    .pending-card { flex-direction: column; align-items: stretch; }
+    .pending-actions { justify-content: flex-end; }
+    .user-table { font-size: 12px; }
+    .user-table thead th, .user-table tbody td { padding: 10px 12px; }
+}

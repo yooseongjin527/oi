@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="/static/css/admin.css" />
+{% endblock %}
+
+{% block content %}
+<section class="admin-header">
+    <div>
+        <div class="admin-eyebrow">Admin Console</div>
+        <h1 class="admin-title">사용자 관리</h1>
+        <p class="admin-sub">가입 요청을 승인하거나 거부할 수 있습니다.</p>
+    </div>
+    <div class="admin-stats">
+        <div class="stat-card">
+            <span class="stat-value">{{ pending_users | length }}</span>
+            <span class="stat-label">승인 대기</span>
+        </div>
+        <div class="stat-card">
+            <span class="stat-value">{{ other_users | length }}</span>
+            <span class="stat-label">전체 처리됨</span>
+        </div>
+    </div>
+</section>
+
+<!-- 승인 대기 -->
+<section class="admin-section">
+    <h2 class="section-title">
+        승인 대기
+        {% if pending_users %}
+            <span class="badge badge--pending">{{ pending_users | length }}</span>
+        {% endif %}
+    </h2>
+
+    {% if pending_users %}
+        <div class="pending-list">
+            {% for u in pending_users %}
+            <article class="pending-card">
+                <div class="pending-info">
+                    <div class="pending-username">{{ u.username }}</div>
+                    <div class="pending-meta">
+                        <span>{{ u.email }}</span>
+                        <span class="meta-sep">·</span>
+                        <span>{{ u.created_at.strftime('%Y-%m-%d %H:%M') }} 가입</span>
+                    </div>
+                </div>
+                <div class="pending-actions">
+                    <form method="post" action="/admin/users/{{ u.id }}/approve">
+                        <button type="submit" class="btn btn--primary btn--sm">승인</button>
+                    </form>
+                    <form method="post" action="/admin/users/{{ u.id }}/reject"
+                          onsubmit="return confirm('정말 거부하시겠습니까?');">
+                        <button type="submit" class="btn btn--danger btn--sm">거부</button>
+                    </form>
+                </div>
+            </article>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="empty-state">
+            <span class="empty-icon">✓</span>
+            <span>대기 중인 가입 요청이 없습니다.</span>
+        </div>
+    {% endif %}
+</section>
+
+<!-- 전체 사용자 -->
+<section class="admin-section">
+    <h2 class="section-title">처리된 사용자</h2>
+
+    {% if other_users %}
+        <table class="user-table">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>사용자명</th>
+                    <th>이메일</th>
+                    <th>상태</th>
+                    <th>권한</th>
+                    <th>가입일</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for u in other_users %}
+                <tr>
+                    <td class="mono">{{ u.id }}</td>
+                    <td>{{ u.username }}</td>
+                    <td>{{ u.email }}</td>
+                    <td>
+                        <span class="status status--{{ u.status.value }}">
+                            {{ u.status.value }}
+                        </span>
+                    </td>
+                    <td>
+                        <span class="role role--{{ u.role.value }}">
+                            {{ u.role.value }}
+                        </span>
+                    </td>
+                    <td class="dim">{{ u.created_at.strftime('%Y-%m-%d') }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <div class="empty-state">
+            <span>아직 처리된 사용자가 없습니다.</span>
+        </div>
+    {% endif %}
+</section>
+{% endblock %}

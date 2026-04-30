@@ -1,0 +1,162 @@
+name: oi
+
+# ==========================================================
+# OI Project — docker-compose
+# Day 1 Phase 1 최종본 (6개 서비스):
+#   redpanda, redpanda-console, postgres,
+#   fastapi, streamlit_admin, collector
+# ==========================================================
+
+services:
+
+  # ─── Redpanda ─────────────────────────────────────────────
+  redpanda:
+    image: redpandadata/redpanda:v24.2.7
+    container_name: oi-redpanda
+    command:
+      - redpanda
+      - start
+      - --kafka-addr internal://0.0.0.0:9092,external://0.0.0.0:19092
+      - --advertise-kafka-addr internal://redpanda:9092,external://localhost:19092
+      - --pandaproxy-addr internal://0.0.0.0:8082,external://0.0.0.0:18082
+      - --advertise-pandaproxy-addr internal://redpanda:8082,external://localhost:18082
+      - --schema-registry-addr internal://0.0.0.0:8081,external://0.0.0.0:18081
+      - --rpc-addr redpanda:33145
+      - --advertise-rpc-addr redpanda:33145
+      - --smp 1
+      - --memory 1G
+      - --mode dev-container
+      - --default-log-level=warn
+    ports:
+      - "19092:19092"
+      - "18081:18081"
+      - "18082:18082"
+      - "9644:9644"
+    volumes:
+      - redpanda_data:/var/lib/redpanda/data
+    healthcheck:
+      test: ["CMD-SHELL", "rpk cluster health | grep -E 'Healthy:.+true' || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    networks:
+      - oi-net
+
+  # ─── Redpanda Console ────────────────────────────────────
+  redpanda-console:
+    image: redpandadata/console:v2.7.2
+    container_name: oi-redpanda-console
+    depends_on:
+      redpanda:
+        condition: service_healthy
+    environment:
+      KAFKA_BROKERS: redpanda:9092
+      CONNECT_ENABLED: "false"
+    ports:
+      - "8088:8080"
+    networks:
+      - oi-net
+
+  # ─── PostgreSQL ──────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: oi-postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    networks:
+      - oi-net
+
+  # ─── FastAPI (사용자 대시보드) ───────────────────────────
+  fastapi:
+    build: ./backend
+    container_name: oi-fastapi
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_HOST: ${POSTGRES_HOST}
+      POSTGRES_PORT: ${POSTGRES_PORT}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY}
+      JWT_ALGORITHM: ${JWT_ALGORITHM}
+      JWT_EXPIRE_MINUTES: ${JWT_EXPIRE_MINUTES}
+      ADMIN_EMAIL: ${ADMIN_EMAIL}
+      ADMIN_USERNAME: ${ADMIN_USERNAME}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+    volumes:
+      - ./backend:/app
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    networks:
+      - oi-net
+
+  # ─── Streamlit (운영자 콘솔) ─────────────────────────────
+  streamlit_admin:
+    build: ./streamlit_admin
+    container_name: oi-streamlit-admin
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_HOST: ${POSTGRES_HOST}
+      POSTGRES_PORT: ${POSTGRES_PORT}
+      ADMIN_IP_WHITELIST: ${ADMIN_IP_WHITELIST}
+    volumes:
+      - ./streamlit_admin:/app
+    ports:
+      - "8501:8501"
+    networks:
+      - oi-net
+
+  # ─── Collector (GitHub Events → Redpanda) ────────────────
+  collector:
+    build: ./collector
+    container_name: oi-collector
+    depends_on:
+      redpanda:
+        condition: service_healthy
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: ${KAFKA_BOOTSTRAP_SERVERS}
+      KAFKA_TOPIC_LIVE: ${KAFKA_TOPIC_LIVE}
+      GITHUB_TOKEN: ${GITHUB_TOKEN}
+      POLL_INTERVAL_SEC: 60
+      MAX_PAGES_PER_POLL: 3
+      KAFKA_NUM_PARTITIONS: 3
+    volumes:
+      - ./collector:/app
+    restart: unless-stopped
+    networks:
+      - oi-net
+
+# ==========================================================
+volumes:
+  redpanda_data:
+  postgres_data:
+
+networks:
+  oi-net:
+    driver: bridge

@@ -1,0 +1,122 @@
+/* ============================================
+   OI — auth.css
+   로그인 / 회원가입 / pending 페이지
+   ============================================ */
+
+.auth-container {
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    min-height: calc(100vh - 200px);
+    padding: 40px 20px;
+}
+
+.auth-card {
+    width: 100%;
+    max-width: 420px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 40px;
+    box-shadow: var(--shadow-md);
+}
+.auth-card--narrow { max-width: 380px; text-align: center; }
+
+.auth-title {
+    font-size: 24px;
+    font-weight: 700;
+    margin: 0 0 8px;
+    letter-spacing: -0.02em;
+}
+.auth-sub {
+    color: var(--text-secondary);
+    margin: 0 0 32px;
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+.auth-form {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+}
+
+.auth-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.auth-label {
+    font-size: 13px;
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.auth-form input {
+    width: 100%;
+    padding: 12px 14px;
+    background: var(--bg);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-md);
+    color: var(--text-primary);
+    font-family: var(--font-sans);
+    font-size: 15px;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.auth-form input:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-soft);
+}
+.auth-form input::placeholder { color: var(--text-tertiary); }
+
+.auth-submit {
+    margin-top: 8px;
+    width: 100%;
+    padding: 14px 24px;
+    font-size: 15px;
+}
+
+.auth-foot {
+    margin-top: 24px;
+    text-align: center;
+    font-size: 14px;
+    color: var(--text-secondary);
+}
+.auth-foot a { color: var(--accent-hover); font-weight: 500; }
+
+.auth-error {
+    margin-top: 16px;
+    padding: 12px 14px;
+    background: rgba(242, 93, 93, 0.1);
+    border: 1px solid rgba(242, 93, 93, 0.3);
+    border-radius: var(--radius-md);
+    color: var(--danger);
+    font-size: 14px;
+}
+
+.pending-icon {
+    font-size: 48px;
+    margin-bottom: 16px;
+}
+
+/* nav 안의 사용자명/로그아웃 */
+.nav-user {
+    color: var(--text-secondary);
+    font-size: 13px;
+    padding: 0 8px;
+    font-family: var(--font-mono);
+}
+.logout-form { display: inline; margin: 0; padding: 0; }
+.nav-link--logout {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    font-family: var(--font-sans);
+    color: var(--text-secondary);
+    padding: 8px 16px;
+    border-radius: var(--radius-sm);
+    font-size: 14px;
+}
+.nav-link--logout:hover { background: var(--surface); color: var(--text-primary); }

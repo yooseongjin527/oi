@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="dashboard-placeholder">
+    <div class="dashboard-eyebrow">대시보드</div>
+    <h1>{{ user.username }}님, 환영합니다.</h1>
+    <p class="dashboard-sub">
+        실시간 트렌딩 분석과 AI 인사이트는 Day 4부터 순차적으로 공개됩니다.
+    </p>
+
+    <div class="dashboard-roadmap">
+        <h2>준비 중인 기능</h2>
+        <ul>
+            <li><strong>F2 가속도 점수</strong> — 5분 단위 변화율 기반 트렌딩 Top 10 (Day 4)</li>
+            <li><strong>F3 이상 급등 탐지</strong> — z-score 기반 바이럴/봇 구분 (Day 4)</li>
+            <li><strong>F4 언어 활동 히트맵</strong> — 시간대별 언어별 활동량 (Day 4)</li>
+            <li><strong>F1 AI 인사이트 카드</strong> — Bedrock Claude의 부상 원인 요약 (Day 5)</li>
+            <li><strong>F5 카테고리별 트렌딩</strong> — AI/ML, Web, Infra, Game 자동 분류 (Day 5)</li>
+            <li><strong>F6 Repo 프로필 페이지</strong> — 24h/7d 활동 추이 (Day 6)</li>
+        </ul>
+    </div>
+
+    <div class="dashboard-meta">
+        <span class="meta-item">계정 상태: <code>{{ user.status.value }}</code></span>
+        <span class="meta-item">권한: <code>{{ user.role.value }}</code></span>
+    </div>
+</section>
+
+<style>
+.dashboard-placeholder { max-width: 760px; margin: 0 auto; }
+.dashboard-eyebrow {
+    display: inline-block; padding: 4px 12px; border-radius: 999px;
+    background: var(--accent-soft); color: var(--accent-hover);
+    font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.5px;
+    margin-bottom: 16px;
+}
+.dashboard-placeholder h1 {
+    font-size: 32px; font-weight: 700; letter-spacing: -0.02em; margin: 0 0 12px;
+}
+.dashboard-sub { color: var(--text-secondary); margin: 0 0 40px; line-height: 1.6; }
+.dashboard-roadmap {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius-lg); padding: 28px; margin-bottom: 32px;
+}
+.dashboard-roadmap h2 {
+    font-size: 18px; font-weight: 600; margin: 0 0 16px;
+}
+.dashboard-roadmap ul {
+    margin: 0; padding-left: 20px;
+    color: var(--text-secondary); line-height: 1.9;
+}
+.dashboard-roadmap strong { color: var(--text-primary); }
+.dashboard-meta {
+    display: flex; gap: 16px; flex-wrap: wrap;
+    color: var(--text-tertiary); font-size: 13px;
+}
+.meta-item code {
+    background: var(--surface); padding: 2px 8px; border-radius: 4px;
+    color: var(--accent-hover);
+}
+</style>
+{% endblock %}

@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="/static/css/auth.css" />
+{% endblock %}
+
+{% block content %}
+<div class="auth-container">
+    <div class="auth-card">
+        <h1 class="auth-title">회원가입</h1>
+        <p class="auth-sub">가입 후 관리자 승인이 필요합니다.</p>
+
+        <form method="post" action="/signup" class="auth-form" id="signupForm">
+            <label class="auth-field">
+                <span class="auth-label">이메일</span>
+                <input type="email" name="email" required autocomplete="email"
+                       placeholder="you@example.com" />
+            </label>
+
+            <label class="auth-field">
+                <span class="auth-label">사용자명</span>
+                <input type="text" name="username" required minlength="3" maxlength="32"
+                       autocomplete="username" pattern="[a-zA-Z0-9_-]{3,32}"
+                       placeholder="영문/숫자/_- 3~32자" />
+            </label>
+
+            <label class="auth-field">
+                <span class="auth-label">비밀번호</span>
+                <input type="password" name="password" required minlength="8"
+                       autocomplete="new-password" placeholder="최소 8자" />
+            </label>
+
+            <button type="submit" class="btn btn--primary auth-submit">가입하기</button>
+        </form>
+
+        <div class="auth-foot">
+            이미 계정이 있으신가요? <a href="/login">로그인</a>
+        </div>
+
+        <div id="authError" class="auth-error" hidden></div>
+    </div>
+</div>
+
+<script>
+// 폼 제출 시 에러를 alert 대신 inline으로
+document.getElementById('signupForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const form = e.target;
+    const fd = new FormData(form);
+    const errBox = document.getElementById('authError');
+    errBox.hidden = true;
+
+    try {
+        const res = await fetch('/signup', { method: 'POST', body: fd, redirect: 'follow' });
+        if (res.redirected) { window.location.href = res.url; return; }
+        if (!res.ok) {
+            const data = await res.json().catch(() => ({ detail: '오류가 발생했습니다.' }));
+            errBox.textContent = data.detail || '가입에 실패했습니다.';
+            errBox.hidden = false;
+        }
+    } catch (err) {
+        errBox.textContent = '네트워크 오류가 발생했습니다.';
+        errBox.hidden = false;
+    }
+});
+</script>
+{% endblock %}

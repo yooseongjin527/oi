@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{% block title %}{{ title or "Opensource Insights" }}{% endblock %}</title>
+
+    <link rel="stylesheet" as="style" crossorigin
+          href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="/static/css/base.css" />
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <header class="site-header">
+        <a href="/" class="brand">
+            <span class="brand-mark">OI</span>
+            <span class="brand-name">Opensource Insights</span>
+        </a>
+        <nav class="site-nav">
+            {% block nav %}
+                {% if user %}
+                    {# 로그인 상태 #}
+                    {% if user.role.value == "admin" %}
+                        <a href="/admin" class="nav-link">관리자</a>
+                    {% endif %}
+                    <a href="/dashboard" class="nav-link">대시보드</a>
+                    <span class="nav-user">{{ user.username }}</span>
+                    <form method="post" action="/logout" class="logout-form">
+                        <button type="submit" class="nav-link nav-link--logout">로그아웃</button>
+                    </form>
+                {% else %}
+                    {# 비로그인 상태 #}
+                    <a href="/login" class="nav-link">로그인</a>
+                    <a href="/signup" class="nav-link nav-link--cta">회원가입</a>
+                {% endif %}
+            {% endblock %}
+        </nav>
+    </header>
+
+    <main class="site-main">
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer class="site-footer">
+        <span>© 2026 Opensource Insights</span>
+    </footer>
+
+    {% block extra_js %}{% endblock %}
+</body>
+</html>
