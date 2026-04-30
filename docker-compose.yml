@@ -152,10 +152,168 @@ services:
     networks:
       - oi-net
 
+  bronze_writer:
+    build:
+      context: ./bronze_writer
+    container_name: oi-bronze-writer
+    depends_on:
+      redpanda:
+        condition: service_healthy
+    environment:
+      - KAFKA_BOOTSTRAP_SERVERS=${KAFKA_BOOTSTRAP_SERVERS}
+      - KAFKA_TOPIC_LIVE=${KAFKA_TOPIC_LIVE}
+      - AWS_S3_BUCKET=${AWS_S3_BUCKET}
+      - AWS_REGION=${AWS_REGION}
+      # Optional overrides (defaults are sane)
+      # - CONSUMER_GROUP_ID=bronze_writer
+      # - S3_BRONZE_LIVE_PREFIX=bronze/live
+      # - BRONZE_BATCH_SIZE=500
+      # - BRONZE_BATCH_INTERVAL_SEC=60
+    volumes:
+      # Mount host AWS credentials read-only for boto3 auto-discovery
+      - ${HOME}/.aws:/root/.aws:ro
+    networks:
+      - oi-net
+    restart: unless-stopped
+
+  # ==========================================================
+  # Airflow (LocalExecutor)
+  # ==========================================================
+
+  airflow-postgres:
+    image: postgres:16-alpine
+    container_name: oi-airflow-postgres
+    environment:
+      - POSTGRES_USER=${AIRFLOW_DB_USER}
+      - POSTGRES_PASSWORD=${AIRFLOW_DB_PASSWORD}
+      - POSTGRES_DB=${AIRFLOW_DB_NAME}
+    volumes:
+      - airflow_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${AIRFLOW_DB_USER} -d ${AIRFLOW_DB_NAME}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - oi-net
+    restart: unless-stopped
+
+  airflow-init:
+    image: apache/airflow:2.10.3
+    container_name: oi-airflow-init
+    depends_on:
+      airflow-postgres:
+        condition: service_healthy
+    environment:
+      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
+      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://${AIRFLOW_DB_USER}:${AIRFLOW_DB_PASSWORD}@airflow-postgres:5432/${AIRFLOW_DB_NAME}
+      - AIRFLOW__CORE__FERNET_KEY=${AIRFLOW_FERNET_KEY}
+      - AIRFLOW__CORE__LOAD_EXAMPLES=False
+      - AIRFLOW__CORE__DAGS_FOLDER=/opt/airflow/dags
+    user: "${AIRFLOW_UID}:0"
+    volumes:
+      - ./airflow/dags:/opt/airflow/dags
+      - ./airflow/plugins:/opt/airflow/plugins
+      - ./airflow/config:/opt/airflow/config
+      - airflow_logs:/opt/airflow/logs
+    entrypoint: /bin/bash
+    command:
+      - -c
+      - |
+        airflow db migrate && \
+        airflow users create \
+          --username "${AIRFLOW_ADMIN_USER}" \
+          --password "${AIRFLOW_ADMIN_PASSWORD}" \
+          --firstname Admin \
+          --lastname User \
+          --role Admin \
+          --email "${AIRFLOW_ADMIN_EMAIL}" \
+        || airflow users list
+    networks:
+      - oi-net
+
+  airflow-scheduler:
+    image: apache/airflow:2.10.3
+    container_name: oi-airflow-scheduler
+    depends_on:
+      airflow-postgres:
+        condition: service_healthy
+      airflow-init:
+        condition: service_completed_successfully
+    environment:
+      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
+      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://${AIRFLOW_DB_USER}:${AIRFLOW_DB_PASSWORD}@airflow-postgres:5432/${AIRFLOW_DB_NAME}
+      - AIRFLOW__CORE__FERNET_KEY=${AIRFLOW_FERNET_KEY}
+      - AIRFLOW__CORE__LOAD_EXAMPLES=False
+      - AIRFLOW__CORE__DAGS_FOLDER=/opt/airflow/dags
+      - AIRFLOW__SCHEDULER__DAG_DIR_LIST_INTERVAL=30
+      # Day 4부터 boto3 등 추가 패키지가 필요하면 여기 추가
+      - _PIP_ADDITIONAL_REQUIREMENTS=boto3==1.35.49 requests==2.32.3
+      # AWS region (boto3가 마운트한 ~/.aws/credentials 의 region 못 읽으면 fallback)
+      - AWS_DEFAULT_REGION=${AWS_REGION}
+      - AWS_S3_BUCKET=${AWS_S3_BUCKET}
+    user: "${AIRFLOW_UID}:0"
+    volumes:
+      - ./airflow/dags:/opt/airflow/dags
+      - ./airflow/plugins:/opt/airflow/plugins
+      - ./airflow/config:/opt/airflow/config
+      - airflow_logs:/opt/airflow/logs
+      - ${HOME}/.aws:/home/airflow/.aws:ro
+    command: scheduler
+    healthcheck:
+      test: ["CMD-SHELL", "airflow jobs check --job-type SchedulerJob --hostname \"$${HOSTNAME}\""]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    networks:
+      - oi-net
+    restart: unless-stopped
+
+  airflow-webserver:
+    image: apache/airflow:2.10.3
+    container_name: oi-airflow-webserver
+    depends_on:
+      airflow-postgres:
+        condition: service_healthy
+      airflow-init:
+        condition: service_completed_successfully
+    environment:
+      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
+      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://${AIRFLOW_DB_USER}:${AIRFLOW_DB_PASSWORD}@airflow-postgres:5432/${AIRFLOW_DB_NAME}
+      - AIRFLOW__CORE__FERNET_KEY=${AIRFLOW_FERNET_KEY}
+      - AIRFLOW__CORE__LOAD_EXAMPLES=False
+      - AIRFLOW__CORE__DAGS_FOLDER=/opt/airflow/dags
+      - AIRFLOW__WEBSERVER__EXPOSE_CONFIG=False
+      - _PIP_ADDITIONAL_REQUIREMENTS=boto3==1.35.49 requests==2.32.3       # ← 추가
+      - AWS_DEFAULT_REGION=${AWS_REGION}
+      - AWS_S3_BUCKET=${AWS_S3_BUCKET}
+    user: "${AIRFLOW_UID}:0"
+    volumes:
+      - ./airflow/dags:/opt/airflow/dags
+      - ./airflow/plugins:/opt/airflow/plugins
+      - ./airflow/config:/opt/airflow/config
+      - airflow_logs:/opt/airflow/logs
+      - ${HOME}/.aws:/home/airflow/.aws:ro 
+    ports:
+      - "8090:8080"
+    command: webserver
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    networks:
+      - oi-net
+    restart: unless-stopped
+
 # ==========================================================
 volumes:
   redpanda_data:
   postgres_data:
+  airflow_postgres_data:    
+  airflow_logs:  
 
 networks:
   oi-net:
