@@ -60,3 +60,4 @@ airflow/webserver_config.py
 
 *.cache.json
 credentials
+backend/.venv/

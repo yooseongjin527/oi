@@ -19,7 +19,37 @@
     </p>
     <div class="hero-cta">
         <a href="/signup" class="btn btn--primary">시작하기</a>
-        <a href="#features" class="btn btn--ghost">어떻게 작동하나요?</a>
+        <a href="#insights" class="btn btn--ghost">오늘의 트렌드 보기</a>
+    </div>
+</section>
+
+<!-- ── 인사이트 카드 섹션 ── -->
+<section id="insights" class="insights-section">
+    <div class="insights-header">
+        <h2 class="insights-title">🔥 오늘의 GitHub 트렌드</h2>
+        <span class="insights-date" id="insights-date"></span>
+    </div>
+
+    <!-- 로딩 상태 -->
+    <div class="insights-loading" id="insights-loading">
+        <div class="loading-spinner"></div>
+        <p>Athena + Claude가 트렌드를 분석 중입니다…</p>
+    </div>
+
+    <!-- 에러 상태 -->
+    <div class="insights-error" id="insights-error" style="display:none;">
+        <p>인사이트를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.</p>
+    </div>
+
+    <!-- 인사이트 본문 (마크다운 렌더링) -->
+    <div class="insights-body" id="insights-body" style="display:none;"></div>
+
+    <!-- 근거 데이터 토글 -->
+    <div class="insights-data-toggle" id="insights-data-toggle" style="display:none;">
+        <button class="btn btn--ghost btn--sm" onclick="toggleDataBasis()">
+            근거 데이터 보기 ▾
+        </button>
+        <div class="data-basis-table" id="data-basis-table" style="display:none;"></div>
     </div>
 </section>
 
@@ -58,4 +88,90 @@
         </article>
     </div>
 </section>
+{% endblock %}
+
+{% block extra_js %}
+<!-- marked.js: 마크다운 렌더링 -->
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script>
+// 발표 데모 기준일 고정 (query string으로 override 가능)
+const DEMO_DATE = "2026-04-29";
+const params = new URLSearchParams(window.location.search);
+const insightDate = params.get("date") || DEMO_DATE;
+
+document.getElementById("insights-date").textContent = insightDate;
+
+async function loadInsights() {
+    const loading = document.getElementById("insights-loading");
+    const error   = document.getElementById("insights-error");
+    const body    = document.getElementById("insights-body");
+    const toggle  = document.getElementById("insights-data-toggle");
+
+    try {
+        const res = await fetch(`/api/insights/daily?date=${insightDate}`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+
+        // 마크다운 렌더링
+        body.innerHTML = marked.parse(data.insight_markdown);
+        loading.style.display = "none";
+        body.style.display = "block";
+        toggle.style.display = "block";
+
+        // 근거 데이터 테이블 빌드
+        buildDataTable(data.data_basis);
+
+    } catch (e) {
+        console.error("insights load error:", e);
+        loading.style.display = "none";
+        error.style.display = "block";
+    }
+}
+
+function buildDataTable(rows) {
+    if (!rows || rows.length === 0) return;
+    const table = document.getElementById("data-basis-table");
+    const cols = ["repo_name","event_count","dominant_event_type",
+                  "acceleration_ratio","anomaly_score","watch_zscore","rank_score"];
+    const headers = ["Repo","Events","Dominant","Acc","Anomaly","Watch-Z","Score"];
+
+    let html = "<table class='data-table'><thead><tr>";
+    headers.forEach(h => { html += `<th>${h}</th>`; });
+    html += "</tr></thead><tbody>";
+
+    rows.forEach(r => {
+        html += "<tr>";
+        cols.forEach(c => {
+            let val = r[c] ?? "-";
+            // 숫자 소수점 2자리
+            if (c !== "repo_name" && c !== "dominant_event_type" && c !== "event_count" && val !== "-") {
+                val = parseFloat(val).toFixed(2);
+            }
+            // repo_name 은 GitHub 링크로
+            if (c === "repo_name") {
+                val = `<a href="https://github.com/${val}" target="_blank">${val}</a>`;
+            }
+            html += `<td>${val}</td>`;
+        });
+        html += "</tr>";
+    });
+    html += "</tbody></table>";
+    table.innerHTML = html;
+}
+
+function toggleDataBasis() {
+    const table = document.getElementById("data-basis-table");
+    const btn = document.querySelector(".insights-data-toggle .btn");
+    if (table.style.display === "none") {
+        table.style.display = "block";
+        btn.textContent = "근거 데이터 닫기 ▴";
+    } else {
+        table.style.display = "none";
+        btn.textContent = "근거 데이터 보기 ▾";
+    }
+}
+
+// 페이지 로드 시 자동 실행
+loadInsights();
+</script>
 {% endblock %}

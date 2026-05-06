@@ -98,3 +98,428 @@
     line-height: 1.6;
     margin: 0;
 }
+
+/* ── 인사이트 카드 섹션 ── */
+.insights-section {
+    max-width: 860px;
+    margin: 4rem auto;
+    padding: 0 1.5rem;
+}
+.insights-header {
+    display: flex;
+    align-items: baseline;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+.insights-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+}
+.insights-date {
+    font-size: 0.85rem;
+    color: var(--color-text-muted, #888);
+    font-family: 'JetBrains Mono', monospace;
+}
+.insights-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+    padding: 3rem 0;
+    color: var(--color-text-muted, #888);
+}
+.loading-spinner {
+    width: 36px;
+    height: 36px;
+    border: 3px solid var(--color-border, #e0e0e0);
+    border-top-color: var(--color-primary, #6c63ff);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.insights-error {
+    padding: 2rem;
+    text-align: center;
+    color: #e53e3e;
+    background: #fff5f5;
+    border-radius: 8px;
+}
+.insights-body {
+    background: var(--color-surface, #fff);
+    border: 1px solid var(--color-border, #e8e8e8);
+    border-radius: 12px;
+    padding: 2rem 2.5rem;
+    line-height: 1.8;
+}
+.insights-body h3 { margin-top: 1.5rem; }
+.insights-body h4 { margin-top: 2rem; color: var(--color-primary, #6c63ff); }
+.insights-body a  { color: var(--color-primary, #6c63ff); }
+.insights-body blockquote {
+    border-left: 3px solid var(--color-primary, #6c63ff);
+    margin: 1rem 0;
+    padding: 0.5rem 1rem;
+    color: var(--color-text-muted, #555);
+    background: var(--color-bg-subtle, #f8f8ff);
+    border-radius: 0 6px 6px 0;
+}
+.insights-data-toggle {
+    margin-top: 1rem;
+}
+.data-basis-table {
+    margin-top: 0.75rem;
+    overflow-x: auto;
+}
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.8rem;
+    font-family: 'JetBrains Mono', monospace;
+}
+.data-table th, .data-table td {
+    padding: 0.4rem 0.75rem;
+    border: 1px solid var(--color-border, #e8e8e8);
+    text-align: left;
+    white-space: nowrap;
+}
+.data-table th {
+    background: var(--color-bg-subtle, #f5f5f5);
+    font-weight: 600;
+}
+.data-table a { color: var(--color-primary, #6c63ff); }
+
+/* ── 인사이트 bold 레이블 강조 (한 줄 요약 / 주목 이유 / 시사점) ── */
+.insights-body strong {
+    color: #1a1a2e;
+    font-weight: 700;
+    background: #eeecff;
+    padding: 0.1em 0.4em;
+    border-radius: 4px;
+    font-size: 0.95em;
+}
+.insights-body h4 {
+    color: #5b50d6;
+    margin-top: 2rem;
+}
+.insights-body h3 {
+    color: #2d2d2d;
+    margin-top: 1.5rem;
+}
+
+/* ── 인사이트 섹션 다크 테마 전면 재작성 ── */
+.insights-section {
+    max-width: 860px;
+    margin: 4rem auto;
+    padding: 0 1.5rem;
+}
+.insights-header {
+    display: flex;
+    align-items: baseline;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+.insights-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+.insights-date {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    font-family: var(--font-mono);
+}
+.insights-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+    padding: 3rem 0;
+    color: var(--text-secondary);
+}
+.loading-spinner {
+    width: 36px;
+    height: 36px;
+    border: 3px solid var(--border-strong);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.insights-error {
+    padding: 2rem;
+    text-align: center;
+    color: var(--danger);
+    background: rgba(242, 93, 93, 0.08);
+    border: 1px solid rgba(242, 93, 93, 0.2);
+    border-radius: var(--radius-md);
+}
+/* 카드 본문 */
+.insights-body {
+    background: var(--surface);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-lg);
+    padding: 2rem 2.5rem;
+    line-height: 1.8;
+    color: var(--text-primary);
+    -webkit-text-fill-color: var(--text-primary);
+}
+.insights-body p {
+    color: var(--text-primary);
+    -webkit-text-fill-color: var(--text-primary);
+}
+.insights-body h3 {
+    color: var(--text-primary);
+    -webkit-text-fill-color: var(--text-primary);
+    font-size: 1.15rem;
+    margin-top: 2rem;
+    margin-bottom: 0.5rem;
+}
+.insights-body h4 {
+    color: var(--accent);
+    -webkit-text-fill-color: var(--accent);
+    font-size: 1.05rem;
+    margin-top: 2rem;
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.4rem;
+    border-bottom: 1px solid var(--border);
+}
+.insights-body a {
+    color: var(--accent);
+    -webkit-text-fill-color: var(--accent);
+    text-decoration: none;
+}
+.insights-body a:hover {
+    color: var(--accent-hover);
+    -webkit-text-fill-color: var(--accent-hover);
+    text-decoration: underline;
+}
+/* 전체 요약 blockquote */
+.insights-body blockquote {
+    border-left: 3px solid var(--accent);
+    margin: 1rem 0 1.5rem;
+    padding: 0.75rem 1.25rem;
+    color: var(--text-secondary);
+    -webkit-text-fill-color: var(--text-secondary);
+    background: var(--accent-soft);
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+    font-style: normal;
+}
+.insights-body blockquote p {
+    color: var(--text-secondary);
+    -webkit-text-fill-color: var(--text-secondary);
+    margin: 0;
+}
+/* bold 레이블 (한 줄 요약 / 주목 이유 / 시사점) */
+.insights-body strong {
+    color: var(--text-primary);
+    -webkit-text-fill-color: var(--text-primary);
+    font-weight: 700;
+    background: rgba(127, 119, 221, 0.15);
+    padding: 0.1em 0.4em;
+    border-radius: 4px;
+}
+.insights-body ul {
+    padding-left: 1.5rem;
+    color: var(--text-primary);
+    -webkit-text-fill-color: var(--text-primary);
+}
+.insights-body li {
+    color: var(--text-primary);
+    -webkit-text-fill-color: var(--text-primary);
+    margin-bottom: 0.3rem;
+}
+.insights-body hr {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 1.5rem 0;
+}
+/* 근거 데이터 토글 */
+.insights-data-toggle {
+    margin-top: 1rem;
+}
+.data-basis-table {
+    margin-top: 0.75rem;
+    overflow-x: auto;
+}
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.78rem;
+    font-family: var(--font-mono);
+    color: var(--text-primary);
+}
+.data-table th, .data-table td {
+    padding: 0.4rem 0.75rem;
+    border: 1px solid var(--border);
+    text-align: left;
+    white-space: nowrap;
+}
+.data-table th {
+    background: var(--surface-elevated);
+    color: var(--text-secondary);
+    font-weight: 600;
+}
+.data-table a {
+    color: var(--accent);
+    -webkit-text-fill-color: var(--accent);
+}
+
+/* ── 인사이트 섹션 다크 테마 전면 재작성 ── */
+.insights-section {
+    max-width: 860px;
+    margin: 4rem auto;
+    padding: 0 1.5rem;
+}
+.insights-header {
+    display: flex;
+    align-items: baseline;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+.insights-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+.insights-date {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    font-family: var(--font-mono);
+}
+.insights-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+    padding: 3rem 0;
+    color: var(--text-secondary);
+}
+.loading-spinner {
+    width: 36px;
+    height: 36px;
+    border: 3px solid var(--border-strong);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.insights-error {
+    padding: 2rem;
+    text-align: center;
+    color: var(--danger);
+    background: rgba(242, 93, 93, 0.08);
+    border: 1px solid rgba(242, 93, 93, 0.2);
+    border-radius: var(--radius-md);
+}
+/* 카드 본문 */
+.insights-body {
+    background: var(--surface);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-lg);
+    padding: 2rem 2.5rem;
+    line-height: 1.8;
+    color: var(--text-primary);
+    -webkit-text-fill-color: var(--text-primary);
+}
+.insights-body p {
+    color: var(--text-primary);
+    -webkit-text-fill-color: var(--text-primary);
+}
+.insights-body h3 {
+    color: var(--text-primary);
+    -webkit-text-fill-color: var(--text-primary);
+    font-size: 1.15rem;
+    margin-top: 2rem;
+    margin-bottom: 0.5rem;
+}
+.insights-body h4 {
+    color: var(--accent);
+    -webkit-text-fill-color: var(--accent);
+    font-size: 1.05rem;
+    margin-top: 2rem;
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.4rem;
+    border-bottom: 1px solid var(--border);
+}
+.insights-body a {
+    color: var(--accent);
+    -webkit-text-fill-color: var(--accent);
+    text-decoration: none;
+}
+.insights-body a:hover {
+    color: var(--accent-hover);
+    -webkit-text-fill-color: var(--accent-hover);
+    text-decoration: underline;
+}
+/* 전체 요약 blockquote */
+.insights-body blockquote {
+    border-left: 3px solid var(--accent);
+    margin: 1rem 0 1.5rem;
+    padding: 0.75rem 1.25rem;
+    color: var(--text-secondary);
+    -webkit-text-fill-color: var(--text-secondary);
+    background: var(--accent-soft);
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+    font-style: normal;
+}
+.insights-body blockquote p {
+    color: var(--text-secondary);
+    -webkit-text-fill-color: var(--text-secondary);
+    margin: 0;
+}
+/* bold 레이블 (한 줄 요약 / 주목 이유 / 시사점) */
+.insights-body strong {
+    color: var(--text-primary);
+    -webkit-text-fill-color: var(--text-primary);
+    font-weight: 700;
+    background: rgba(127, 119, 221, 0.15);
+    padding: 0.1em 0.4em;
+    border-radius: 4px;
+}
+.insights-body ul {
+    padding-left: 1.5rem;
+    color: var(--text-primary);
+    -webkit-text-fill-color: var(--text-primary);
+}
+.insights-body li {
+    color: var(--text-primary);
+    -webkit-text-fill-color: var(--text-primary);
+    margin-bottom: 0.3rem;
+}
+.insights-body hr {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 1.5rem 0;
+}
+/* 근거 데이터 토글 */
+.insights-data-toggle {
+    margin-top: 1rem;
+}
+.data-basis-table {
+    margin-top: 0.75rem;
+    overflow-x: auto;
+}
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.78rem;
+    font-family: var(--font-mono);
+    color: var(--text-primary);
+}
+.data-table th, .data-table td {
+    padding: 0.4rem 0.75rem;
+    border: 1px solid var(--border);
+    text-align: left;
+    white-space: nowrap;
+}
+.data-table th {
+    background: var(--surface-elevated);
+    color: var(--text-secondary);
+    font-weight: 600;
+}
+.data-table a {
+    color: var(--accent);
+    -webkit-text-fill-color: var(--accent);
+}

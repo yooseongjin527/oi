@@ -260,12 +260,12 @@ def silver_to_gold_dag():
             repo_id,
             repo_name,
             event_count,
-            COALESCE((CAST(event_count AS double) - activity_mean) / activity_std, 0) AS activity_zscore,
+            (CAST(event_count AS double) - activity_mean) / activity_std AS activity_zscore,
             watch_count,
             watch_ratio,
-            COALESCE((watch_ratio - watch_mean) / watch_std, 0)           AS watch_zscore,
+            (watch_ratio - watch_mean) / watch_std           AS watch_zscore,
             fork_ratio,
-            COALESCE((fork_ratio - fork_mean)  / fork_std, 0)             AS fork_zscore,
+            (fork_ratio - fork_mean)  / fork_std             AS fork_zscore,
             SQRT(
                 POW(COALESCE((CAST(event_count AS double) - activity_mean) / activity_std, 0), 2) +
                 POW(COALESCE((watch_ratio - watch_mean) / watch_std, 0), 2) +
