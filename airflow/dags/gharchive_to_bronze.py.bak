@@ -168,10 +168,10 @@ with DAG(
     description="Hourly GHArchive .json.gz -> S3 Bronze archive",
     default_args=default_args,
     # Start at a safe historical hour so manual triggers work without weird semantics.
-    start_date=datetime(2026, 4, 27, 0, 0, tzinfo=timezone.utc),
+    start_date=datetime(2026, 4, 29, 0, 0, tzinfo=timezone.utc),
     schedule="0 * * * *",      # top of every hour
-    catchup=True,             # don't auto-fill history; use manual backfill if needed
-    max_active_runs=4,          # allow some concurrency for backfills
+    catchup=False,             # don't auto-fill history; use manual backfill if needed
+    max_active_runs=2,          # allow some concurrency for backfills
     tags=["bronze", "gharchive"],
 ) as dag:
 

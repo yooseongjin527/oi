@@ -1,0 +1,103 @@
+{
+    "Table": {
+        "Name": "bronze_archive",
+        "DatabaseName": "oi",
+        "Owner": "hadoop",
+        "CreateTime": "2026-04-30T14:19:57+09:00",
+        "UpdateTime": "2026-04-30T14:19:57+09:00",
+        "LastAccessTime": "1970-01-01T09:00:00+09:00",
+        "Retention": 0,
+        "StorageDescriptor": {
+            "Columns": [
+                {
+                    "Name": "id",
+                    "Type": "string"
+                },
+                {
+                    "Name": "type",
+                    "Type": "string"
+                },
+                {
+                    "Name": "actor",
+                    "Type": "struct<id:bigint,login:string,display_login:string,gravatar_id:string,url:string,avatar_url:string>"
+                },
+                {
+                    "Name": "repo",
+                    "Type": "struct<id:bigint,name:string,url:string>"
+                },
+                {
+                    "Name": "payload",
+                    "Type": "string"
+                },
+                {
+                    "Name": "public",
+                    "Type": "boolean"
+                },
+                {
+                    "Name": "created_at",
+                    "Type": "string"
+                },
+                {
+                    "Name": "org",
+                    "Type": "struct<id:bigint,login:string,gravatar_id:string,url:string,avatar_url:string>"
+                }
+            ],
+            "Location": "s3://oi-data-lake/bronze/archive",
+            "InputFormat": "org.apache.hadoop.mapred.TextInputFormat",
+            "OutputFormat": "org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat",
+            "Compressed": false,
+            "NumberOfBuckets": -1,
+            "SerdeInfo": {
+                "SerializationLibrary": "org.openx.data.jsonserde.JsonSerDe",
+                "Parameters": {
+                    "mapping": "true",
+                    "serialization.format": "1",
+                    "ignore.malformed.json": "true",
+                    "dots.in.keys": "false",
+                    "case.insensitive": "true"
+                }
+            },
+            "BucketColumns": [],
+            "SortColumns": [],
+            "Parameters": {},
+            "SkewedInfo": {
+                "SkewedColumnNames": [],
+                "SkewedColumnValues": [],
+                "SkewedColumnValueLocationMaps": {}
+            },
+            "StoredAsSubDirectories": false
+        },
+        "PartitionKeys": [
+            {
+                "Name": "year",
+                "Type": "string"
+            },
+            {
+                "Name": "month",
+                "Type": "string"
+            },
+            {
+                "Name": "day",
+                "Type": "string"
+            },
+            {
+                "Name": "hour",
+                "Type": "string"
+            }
+        ],
+        "TableType": "EXTERNAL_TABLE",
+        "Parameters": {
+            "transient_lastDdlTime": "1777526397",
+            "compressionType": "gzip",
+            "has_encrypted_data": "false",
+            "classification": "json",
+            "EXTERNAL": "TRUE"
+        },
+        "CreatedBy": "arn:aws:iam::827913617635:user/de-ai-17",
+        "IsRegisteredWithLakeFormation": false,
+        "CatalogId": "827913617635",
+        "VersionId": "0",
+        "IsMultiDialectView": false,
+        "IsMaterializedView": false
+    }
+}
