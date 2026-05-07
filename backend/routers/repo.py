@@ -3,8 +3,8 @@ routers/repo.py
 Repo 프로필 페이지 + JSON API.
 
 다른 라우터(pages, insights)와 동일하게 router 단일 export 패턴 사용.
-- GET /repo/{owner}/{name}              → Jinja2 HTML 페이지
-- GET /api/repo/{owner}/{name}/profile  → JSON (페이지에서 fetch)
+- GET /repo/{owner}/{name}              → Jinja2 HTML 페이지 (승인된 사용자만, 미승인 시 redirect)
+- GET /api/repo/{owner}/{name}/profile  → JSON (승인된 사용자만, 미승인 시 401/403)
 """
 import re
 import logging
@@ -14,7 +14,8 @@ from fastapi import APIRouter, Depends, Request, HTTPException, Query
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
-from auth import get_optional_user
+from auth import get_current_user, require_approved_user_page
+from models import User
 from services import repo_service
 
 logger = logging.getLogger(__name__)
@@ -39,13 +40,14 @@ def _validate(owner: str, name: str, date: str) -> tuple[str, str]:
     return repo_name, date
 
 
-# ─── JSON API ─────────────────────────────────────────
+# ─── JSON API (인증 필수) ─────────────────────────────
 
 @router.get("/api/repo/{owner}/{name}/profile")
 async def get_profile(
     owner: str,
     name: str,
     date: str = Query("2026-04-29", description="YYYY-MM-DD"),
+    user: User = Depends(get_current_user),
 ):
     """Repo 프로필 JSON — 24h 시계열 + 메트릭 + 그날의 인사이트 섹션"""
     repo_name, date = _validate(owner, name, date)
@@ -55,12 +57,12 @@ async def get_profile(
             repo_service.get_repo_profile, repo_name, date
         )
     except Exception as e:
-        logger.exception("repo_profile failed")
+        logger.exception("repo_profile failed user=%s repo=%s", user.username, repo_name)
         raise HTTPException(status_code=500, detail=f"Profile query failed: {e}")
     return result
 
 
-# ─── 페이지 (HTML) ────────────────────────────────────
+# ─── 페이지 (HTML, 인증 필수) ─────────────────────────
 
 @router.get("/repo/{owner}/{name}", response_class=HTMLResponse)
 def repo_page(
@@ -68,9 +70,12 @@ def repo_page(
     owner: str,
     name: str,
     date: str = Query("2026-04-29"),
-    user=Depends(get_optional_user),
+    user: User = Depends(require_approved_user_page),
 ):
-    """Repo 프로필 HTML — JS 가 /api/repo/.../profile 호출해서 데이터 채움"""
+    """Repo 프로필 HTML — JS 가 /api/repo/.../profile 호출해서 데이터 채움.
+
+    require_approved_user_page: 비로그인→/login, pending→/pending 으로 redirect.
+    """
     repo_name, date = _validate(owner, name, date)
     return templates.TemplateResponse(
         "repo_profile.html",

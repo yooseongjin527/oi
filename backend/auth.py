@@ -129,3 +129,48 @@ def get_optional_user(
     except JWTError:
         return None
     return db.query(User).filter(User.username == username).first()
+
+
+# ─── 페이지 라우트 용 (가드 + redirect) ─────────────────
+# get_current_user 는 401/403 raw 에러 던지므로 API 용.
+# 페이지에서는 비로그인이면 /login, 미승인이면 /pending 으로 깔끔하게 보냄.
+class RedirectException(Exception):
+    """페이지 가드에서 redirect 가 필요할 때 raise. main.py 에서 핸들러 등록."""
+    def __init__(self, url: str):
+        self.url = url
+
+
+def require_approved_user_page(
+    request: Request,
+    db: Session = Depends(get_db),
+) -> User:
+    """페이지 라우트용 가드 — 인증 + 승인 상태 검사, 실패 시 적절한 페이지로 redirect.
+
+    - 토큰 없음/잘못됨 → /login
+    - 사용자 없음 → /login
+    - status == pending → /pending
+    - status == rejected → /login (rejected 사용자는 그냥 비회원처럼 처리)
+    - status == approved → User 반환
+    """
+    token = _get_token_from_cookie(request)
+    if not token:
+        raise RedirectException("/login")
+    try:
+        payload = decode_token(token)
+        username = payload.get("sub")
+        if not username:
+            raise RedirectException("/login")
+    except JWTError:
+        raise RedirectException("/login")
+
+    user = db.query(User).filter(User.username == username).first()
+    if not user:
+        raise RedirectException("/login")
+
+    if user.status == UserStatus.pending:
+        raise RedirectException("/pending")
+    if user.status != UserStatus.approved:
+        # rejected 등 — 보안상 자세한 안내 없이 로그인 페이지로
+        raise RedirectException("/login")
+
+    return user

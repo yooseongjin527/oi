@@ -1,62 +1,312 @@
 {% extends "base.html" %}
 
+{% block title %}대시보드 · Opensource Insights{% endblock %}
+
+{% block extra_css %}
+{# home.css 의 insights/metrics/categories 스타일을 그대로 재사용 #}
+<link rel="stylesheet" href="/static/css/home.css" />
+{% endblock %}
+
 {% block content %}
-<section class="dashboard-placeholder">
+<section class="dashboard-greeting">
     <div class="dashboard-eyebrow">대시보드</div>
     <h1>{{ user.username }}님, 환영합니다.</h1>
     <p class="dashboard-sub">
-        실시간 트렌딩 분석과 AI 인사이트는 Day 4부터 순차적으로 공개됩니다.
+        GitHub 트렌딩 분석을 실시간으로 제공합니다. 매일의 인사이트, 가속도 점수,
+        이상 급등 탐지, 카테고리별 분류를 한 화면에서 확인하세요.
     </p>
+</section>
 
-    <div class="dashboard-roadmap">
-        <h2>준비 중인 기능</h2>
-        <ul>
-            <li><strong>F2 가속도 점수</strong> — 5분 단위 변화율 기반 트렌딩 Top 10 (Day 4)</li>
-            <li><strong>F3 이상 급등 탐지</strong> — z-score 기반 바이럴/봇 구분 (Day 4)</li>
-            <li><strong>F4 언어 활동 히트맵</strong> — 시간대별 언어별 활동량 (Day 4)</li>
-            <li><strong>F1 AI 인사이트 카드</strong> — Bedrock Claude의 부상 원인 요약 (Day 5)</li>
-            <li><strong>F5 카테고리별 트렌딩</strong> — AI/ML, Web, Infra, Game 자동 분류 (Day 5)</li>
-            <li><strong>F6 Repo 프로필 페이지</strong> — 24h/7d 활동 추이 (Day 6)</li>
-        </ul>
+<!-- ── 인사이트 카드 섹션 (F1) ── -->
+<section id="insights" class="insights-section">
+    <div class="insights-header">
+        <h2 class="insights-title">🔥 오늘의 GitHub 트렌드</h2>
+        <span class="insights-date" id="insights-date"></span>
     </div>
 
-    <div class="dashboard-meta">
-        <span class="meta-item">계정 상태: <code>{{ user.status.value }}</code></span>
-        <span class="meta-item">권한: <code>{{ user.role.value }}</code></span>
+    <!-- 로딩 상태 -->
+    <div class="insights-loading" id="insights-loading">
+        <div class="loading-spinner"></div>
+        <p>Athena + Claude가 트렌드를 분석 중입니다…</p>
+    </div>
+
+    <!-- 에러 상태 -->
+    <div class="insights-error" id="insights-error" style="display:none;">
+        <p>인사이트를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.</p>
+    </div>
+
+    <!-- 인사이트 본문 (마크다운 렌더링) -->
+    <div class="insights-body" id="insights-body" style="display:none;"></div>
+
+    <!-- 근거 데이터 토글 -->
+    <div class="insights-data-toggle" id="insights-data-toggle" style="display:none;">
+        <button class="btn btn--ghost btn--sm" onclick="toggleDataBasis()">
+            근거 데이터 보기 ▾
+        </button>
+        <div class="data-basis-table" id="data-basis-table" style="display:none;"></div>
     </div>
 </section>
 
-<style>
-.dashboard-placeholder { max-width: 760px; margin: 0 auto; }
-.dashboard-eyebrow {
-    display: inline-block; padding: 4px 12px; border-radius: 999px;
-    background: var(--accent-soft); color: var(--accent-hover);
-    font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.5px;
-    margin-bottom: 16px;
+<!-- ── F2: 가속도 Top 10 + F3: 이상 급등 Top 5 ── -->
+<!-- /api/insights/daily 응답의 data_basis 를 재활용 — 추가 API 호출 없음 -->
+<section id="metrics" class="metrics-section" style="display:none;">
+    <div class="metrics-grid">
+
+        <!-- F2: 가속도 점수 — acceleration_ratio 내림차순 -->
+        <div class="metric-card">
+            <div class="metric-card-header">
+                <h3>📈 가속도 Top 10</h3>
+                <span class="metric-card-sub">전일 대비 이벤트 증가율</span>
+            </div>
+            <ol class="metric-list" id="acceleration-list"></ol>
+            <p class="metric-card-foot">
+                acceleration_ratio = 오늘 events / 어제 events
+            </p>
+        </div>
+
+        <!-- F3: 이상 급등 탐지 — watch_zscore 내림차순 -->
+        <div class="metric-card">
+            <div class="metric-card-header">
+                <h3>⚠️ 이상 급등 Top 5</h3>
+                <span class="metric-card-sub">Watch z-score 기반</span>
+            </div>
+            <ol class="metric-list" id="anomaly-list"></ol>
+            <p class="metric-card-foot">
+                z-score &gt; 3 = 통계적 유의 급등 · 봇/바이럴 패턴 분리
+            </p>
+        </div>
+
+    </div>
+</section>
+
+<!-- ── F5: 카테고리별 트렌딩 ── -->
+<!-- data_basis 의 각 row 에 OpenSearch 에서 머지된 category 필드를 그룹핑 -->
+<section id="categories" class="categories-section" style="display:none;">
+    <div class="categories-header">
+        <h2>🏷️ 카테고리별 트렌딩</h2>
+        <span class="categories-sub">Bedrock Claude 자동 분류 · 6개 카테고리</span>
+    </div>
+    <div class="categories-grid" id="categories-grid"></div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<!-- marked.js: 마크다운 렌더링 -->
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script>
+// 발표 데모 기준일 고정 (query string으로 override 가능)
+const DEMO_DATE = "2026-04-29";
+const params = new URLSearchParams(window.location.search);
+const insightDate = params.get("date") || DEMO_DATE;
+
+document.getElementById("insights-date").textContent = insightDate;
+
+async function loadInsights() {
+    const loading = document.getElementById("insights-loading");
+    const error   = document.getElementById("insights-error");
+    const body    = document.getElementById("insights-body");
+    const toggle  = document.getElementById("insights-data-toggle");
+
+    try {
+        // credentials: 'same-origin' — 쿠키 자동 포함 (인증된 API 호출)
+        const res = await fetch(`/api/insights/daily?date=${insightDate}`, {
+            credentials: 'same-origin',
+        });
+        if (res.status === 401 || res.status === 403) {
+            // 세션 만료 시 로그인 페이지로
+            window.location.href = "/login";
+            return;
+        }
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+
+        // 마크다운 렌더링
+        body.innerHTML = marked.parse(data.insight_markdown);
+        loading.style.display = "none";
+        body.style.display = "block";
+        toggle.style.display = "block";
+
+        // F2/F3 메트릭 카드 렌더링 (data_basis 재활용 — 추가 API 호출 X)
+        renderMetrics(data.data_basis);
+
+        // F5: 카테고리별 그룹핑 (data_basis 의 category 필드 재활용)
+        renderCategories(data.data_basis);
+
+        // 근거 데이터 테이블 빌드
+        buildDataTable(data.data_basis);
+
+    } catch (e) {
+        console.error("insights load error:", e);
+        loading.style.display = "none";
+        error.style.display = "block";
+    }
 }
-.dashboard-placeholder h1 {
-    font-size: 32px; font-weight: 700; letter-spacing: -0.02em; margin: 0 0 12px;
+
+// ─── F5: 카테고리 칩 helper ────────────────────────────
+// "AI/ML" → cat-chip--ai-ml 같이 CSS 클래스명 안전하게 변환
+function categoryChip(category) {
+    // 분류 전 (null) 이면 빈 placeholder — grid 컬럼 자리만 유지
+    if (!category) {
+        return '<span class="cat-chip cat-chip--empty"></span>';
+    }
+    const cls = category.replace("/", "-").toLowerCase();
+    return `<span class="cat-chip cat-chip--${cls}">${category}</span>`;
 }
-.dashboard-sub { color: var(--text-secondary); margin: 0 0 40px; line-height: 1.6; }
-.dashboard-roadmap {
-    background: var(--surface); border: 1px solid var(--border);
-    border-radius: var(--radius-lg); padding: 28px; margin-bottom: 32px;
+
+function renderMetrics(rows) {
+    // data_basis 가 비어있으면 메트릭 섹션 숨김 유지
+    if (!rows || rows.length === 0) return;
+
+    // ── F2: 가속도 Top 10 ──
+    // acceleration_ratio 내림차순. null/undefined 는 0 처리.
+    // Athena 결과는 모두 string 이라 parseFloat 필수.
+    const accSorted = [...rows]
+        .map(r => ({ ...r, _acc: parseFloat(r.acceleration_ratio) || 0 }))
+        .sort((a, b) => b._acc - a._acc)
+        .slice(0, 10);
+
+    const accList = document.getElementById("acceleration-list");
+    accList.innerHTML = accSorted.map((r, i) => `
+        <li class="metric-item">
+            <span class="metric-rank">${i + 1}</span>
+            <a href="/repo/${r.repo_name}?date=${insightDate}" class="metric-repo">
+                ${r.repo_name}
+            </a>
+            ${categoryChip(r.category)}
+            <a href="https://github.com/${r.repo_name}" target="_blank" 
+               class="metric-ext" title="GitHub에서 보기">↗</a>
+            <span class="metric-value metric-value--acc">×${r._acc.toFixed(2)}</span>
+        </li>
+    `).join("");
+
+    // ── F3: 이상 급등 Top 5 ──
+    // watch_zscore 내림차순. 양수만 (의미있는 급등).
+    // 핸드오프 필터: rank_score 계산 시 watch_zscore > 0 만 유지하므로
+    // data_basis 의 모든 row 가 이미 z > 0 보장되지만, 방어적으로 한번 더 필터.
+    const anomSorted = [...rows]
+        .map(r => ({
+            ...r,
+            _z: parseFloat(r.watch_zscore) || 0,
+            _events: parseInt(r.event_count) || 0,
+        }))
+        .filter(r => r._z > 0)
+        .sort((a, b) => b._z - a._z)
+        .slice(0, 5);
+
+    const anomList = document.getElementById("anomaly-list");
+    anomList.innerHTML = anomSorted.map((r, i) => `
+        <li class="metric-item">
+            <span class="metric-rank">${i + 1}</span>
+            <a href="/repo/${r.repo_name}?date=${insightDate}" class="metric-repo">
+                ${r.repo_name}
+            </a>
+            ${categoryChip(r.category)}
+            <a href="https://github.com/${r.repo_name}" target="_blank" 
+               class="metric-ext" title="GitHub에서 보기">↗</a>
+            <span class="metric-value metric-value--anom">z=${r._z.toFixed(2)}</span>
+        </li>
+    `).join("");
+
+    // 섹션 표시 (인사이트 로딩 완료 후 같이 노출)
+    document.getElementById("metrics").style.display = "block";
 }
-.dashboard-roadmap h2 {
-    font-size: 18px; font-weight: 600; margin: 0 0 16px;
+
+// ─── F5: 카테고리별 그룹핑 ─────────────────────────────
+function renderCategories(rows) {
+    if (!rows || rows.length === 0) return;
+
+    // 카테고리별 그룹핑 — null 은 "Other" 로 fallback (분류 전 repo)
+    const groups = {};
+    rows.forEach(r => {
+        const cat = r.category || "Other";
+        if (!groups[cat]) groups[cat] = [];
+        groups[cat].push(r);
+    });
+
+    // 표시 순서: 정해진 우선순위 → 거기 없는 카테고리는 뒤에
+    const order = ["AI/ML", "DevTools", "Web", "Infra", "Game", "Other"];
+    const sortedCats = order.filter(c => groups[c]);
+    Object.keys(groups).forEach(c => {
+        if (!sortedCats.includes(c)) sortedCats.push(c);
+    });
+
+    // 각 그룹 안에서 rank_score 내림차순 정렬
+    sortedCats.forEach(cat => {
+        groups[cat].sort((a, b) =>
+            (parseFloat(b.rank_score) || 0) - (parseFloat(a.rank_score) || 0)
+        );
+    });
+
+    const grid = document.getElementById("categories-grid");
+    grid.innerHTML = sortedCats.map(cat => {
+        const items = groups[cat];
+        const cls = cat.replace("/", "-").toLowerCase();
+        const itemsHtml = items.map(r => `
+            <li class="cat-item">
+                <a href="/repo/${r.repo_name}?date=${insightDate}" class="cat-item-name">
+                    ${r.repo_name}
+                </a>
+                <span class="cat-item-events">${parseInt(r.event_count).toLocaleString()}</span>
+            </li>
+        `).join("");
+        return `
+            <div class="category-card category-card--${cls}">
+                <div class="category-card-header">
+                    <span class="category-card-name">${cat}</span>
+                    <span class="category-card-count">${items.length}</span>
+                </div>
+                <ul class="category-card-list">${itemsHtml}</ul>
+            </div>
+        `;
+    }).join("");
+
+    document.getElementById("categories").style.display = "block";
 }
-.dashboard-roadmap ul {
-    margin: 0; padding-left: 20px;
-    color: var(--text-secondary); line-height: 1.9;
+
+function buildDataTable(rows) {
+    if (!rows || rows.length === 0) return;
+    const table = document.getElementById("data-basis-table");
+    const cols = ["repo_name","event_count","dominant_event_type",
+                  "acceleration_ratio","anomaly_score","watch_zscore","rank_score"];
+    const headers = ["Repo","Events","Dominant","Acc","Anomaly","Watch-Z","Score"];
+
+    let html = "<table class='data-table'><thead><tr>";
+    headers.forEach(h => { html += `<th>${h}</th>`; });
+    html += "</tr></thead><tbody>";
+
+    rows.forEach(r => {
+        html += "<tr>";
+        cols.forEach(c => {
+            let val = r[c] ?? "-";
+            // 숫자 소수점 2자리
+            if (c !== "repo_name" && c !== "dominant_event_type" && c !== "event_count" && val !== "-") {
+                val = parseFloat(val).toFixed(2);
+            }
+            // repo_name 은 GitHub 링크로
+            if (c === "repo_name") {
+                val = `<a href="https://github.com/${val}" target="_blank">${val}</a>`;
+            }
+            html += `<td>${val}</td>`;
+        });
+        html += "</tr>";
+    });
+    html += "</tbody></table>";
+    table.innerHTML = html;
 }
-.dashboard-roadmap strong { color: var(--text-primary); }
-.dashboard-meta {
-    display: flex; gap: 16px; flex-wrap: wrap;
-    color: var(--text-tertiary); font-size: 13px;
+
+function toggleDataBasis() {
+    const table = document.getElementById("data-basis-table");
+    const btn = document.querySelector(".insights-data-toggle .btn");
+    if (table.style.display === "none") {
+        table.style.display = "block";
+        btn.textContent = "근거 데이터 닫기 ▴";
+    } else {
+        table.style.display = "none";
+        btn.textContent = "근거 데이터 보기 ▾";
+    }
 }
-.meta-item code {
-    background: var(--surface); padding: 2px 8px; border-radius: 4px;
-    color: var(--accent-hover);
-}
-</style>
+
+// 페이지 로드 시 자동 실행
+loadInsights();
+</script>
 {% endblock %}

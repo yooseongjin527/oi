@@ -556,3 +556,72 @@
     color: #6E6E78;
     -webkit-text-fill-color: #6E6E78;
 }
+/* ─── 비로그인/대기 상태 안내 배너 (home.html 전용) ─── */
+.access-banner {
+    max-width: 880px;
+    margin: 0 auto 64px;
+    padding: 0 24px;
+}
+.access-banner-inner {
+    display: flex;
+    align-items: flex-start;
+    gap: 20px;
+    background: linear-gradient(135deg, rgba(154,147,232,0.08) 0%, rgba(154,147,232,0.03) 100%);
+    border: 1px solid rgba(154,147,232,0.25);
+    border-radius: 14px;
+    padding: 24px 28px;
+}
+.access-banner-icon {
+    font-size: 32px;
+    line-height: 1;
+    flex-shrink: 0;
+}
+.access-banner-body h3 {
+    margin: 0 0 8px;
+    font-size: 17px;
+    font-weight: 600;
+    color: var(--text-primary);
+    -webkit-text-fill-color: var(--text-primary);
+    letter-spacing: -0.01em;
+}
+.access-banner-body p {
+    margin: 0;
+    font-size: 14px;
+    color: var(--text-secondary);
+    -webkit-text-fill-color: var(--text-secondary);
+    line-height: 1.65;
+}
+
+/* ─── 대시보드 인사말 (dashboard.html 전용) ─── */
+.dashboard-greeting {
+    max-width: 1200px;
+    margin: 0 auto 32px;
+    padding: 32px 24px 0;
+}
+.dashboard-eyebrow {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 999px;
+    background: var(--accent-soft);
+    color: var(--accent-hover);
+    -webkit-text-fill-color: var(--accent-hover);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.5px;
+    margin-bottom: 14px;
+}
+.dashboard-greeting h1 {
+    font-size: 32px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    margin: 0 0 12px;
+    color: var(--text-primary);
+    -webkit-text-fill-color: var(--text-primary);
+}
+.dashboard-sub {
+    color: var(--text-secondary);
+    -webkit-text-fill-color: var(--text-secondary);
+    margin: 0;
+    line-height: 1.7;
+    max-width: 780px;
+}
