@@ -1,8 +1,8 @@
 """
 services/insights_service.py
-Gold 마트 조회 → 프롬프트 렌더링 → Bedrock 호출 E2E 서비스.
+Gold 마트 조회 → 프롬프트 렌더링 → Bedrock 호출 → 카테고리 머지 → OpenSearch 인덱싱 E2E.
 
-athena_client + bedrock_client 를 묶는 오케스트레이터.
+athena_client + bedrock_client + opensearch_client 를 묶는 오케스트레이터.
 FastAPI 라우터에서 asyncio.to_thread() 로 감싸서 호출.
 """
 import os
@@ -91,9 +91,49 @@ def _build_prompt(template_md: str, date: str, repo_table: str) -> tuple[str, st
     return system_raw, user_text
 
 
+def _merge_categories(rows: list, date: str) -> None:
+    """
+    F5: OpenSearch 에서 해당 날짜의 카테고리 정보를 조회해 rows 에 in-place 머지.
+
+    - 카테고리 분류는 별도 배치 (Airflow 또는 수동 트리거) 에서 채워짐
+    - 이 함수 호출 시점:
+      * 분류 전: 모든 row 의 category=None (UI 에서 "Other" 그룹으로 표시)
+      * 분류 후: 실제 카테고리 값
+    - OpenSearch 실패 시 모든 row 에 category=None 설정 (best-effort)
+    """
+    try:
+        from services import opensearch_client
+        os_result = opensearch_client.get_by_date(date=date, size=20)
+        # repo_name → {category, confidence} 매핑 dict
+        cat_map = {
+            hit["repo_name"]: {
+                "category": hit.get("category"),
+                "category_confidence": hit.get("category_confidence"),
+            }
+            for hit in os_result.get("hits", [])
+            if hit.get("repo_name")
+        }
+        # rows 에 머지
+        for row in rows:
+            cat_info = cat_map.get(row.get("repo_name"), {})
+            row["category"] = cat_info.get("category")
+            row["category_confidence"] = cat_info.get("category_confidence")
+        logger.info(
+            "insights.category_merge matched=%d/%d",
+            sum(1 for r in rows if r.get("category")),
+            len(rows),
+        )
+    except Exception as e:
+        # OpenSearch 다운 등 — 인사이트 응답엔 영향 없음. 카테고리만 비어있게.
+        logger.warning("insights.category_merge failed (non-fatal): %s", e)
+        for row in rows:
+            row.setdefault("category", None)
+            row.setdefault("category_confidence", None)
+
+
 def get_daily_insights(date: str) -> dict:
     """
-    E2E: Athena Gold 조회 → 프롬프트 렌더링 → Bedrock 호출 → dict 반환.
+    E2E: Athena Gold 조회 → 프롬프트 렌더링 → Bedrock 호출 → 카테고리 머지 → OpenSearch 인덱싱 → dict 반환.
 
     Args:
         date: 'YYYY-MM-DD' 형식
@@ -101,7 +141,7 @@ def get_daily_insights(date: str) -> dict:
         {
           "date": str,
           "insight_markdown": str,   # Bedrock 응답 (마크다운)
-          "data_basis": list[dict],  # 근거 데이터 (UI 토글용)
+          "data_basis": list[dict],  # 근거 데이터 (UI 토글용 + F5 카테고리 포함)
           "bedrock_meta": dict,      # 토큰/latency (운영 로깅용)
         }
     """
@@ -141,9 +181,40 @@ def get_daily_insights(date: str) -> dict:
         result["input_tokens"], result["output_tokens"], result["latency_ms"],
     )
 
+    insight_md = result["text"]
+
+    # Step 4: F5 카테고리 머지 (best-effort)
+    # - rows 에 in-place 로 category, category_confidence 필드 추가
+    # - 분류 전이면 category=None — UI 에서 "Other" 그룹으로 자동 fallback
+    # - 인덱싱(Step 5) 보다 먼저 실행 — 응답에 category 가 들어가야 하므로
+    _merge_categories(rows, date)
+
+    # Step 5: OpenSearch 인덱싱 (best-effort)
+    # - 메인 페이지 진입 → 인사이트 생성 → 자동 색인 → 검색 페이지에서 즉시 조회 가능
+    # - 색인 실패해도 인사이트 응답은 정상 반환 (검색 기능만 일시 불가)
+    # - import 를 함수 안에 둔 이유: OpenSearch 컨테이너가 fastapi startup 시점에
+    #   안 떠있어도 fastapi 자체는 뜨도록 안전장치 (모듈-레벨 import 회피)
+    # - opensearch_client.index_daily 는 partial update 모드라
+    #   카테고리 필드(category, category_confidence, category_reasoning,
+    #   categorized_at) 를 건드리지 않음 — 배치가 채워둔 값이 살아남음
+    try:
+        from services import opensearch_client
+        idx_result = opensearch_client.index_daily(
+            date=date,
+            rows=rows,
+            insight_markdown=insight_md,
+        )
+        logger.info(
+            "insights.opensearch indexed=%d errors=%d",
+            idx_result["indexed"], idx_result["errors"],
+        )
+    except Exception as e:
+        # 인덱싱 실패는 인사이트 응답에 영향 없음 — 검색 기능만 일시 불가
+        logger.warning("insights.opensearch failed (non-fatal): %s", e)
+
     return {
         "date": date,
-        "insight_markdown": result["text"],
+        "insight_markdown": insight_md,
         "data_basis": rows,
         "bedrock_meta": {
             "input_tokens": result["input_tokens"],

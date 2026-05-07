@@ -1,0 +1,271 @@
+{% extends "base.html" %}
+
+{% block title %}{{ repo_name }} · Opensource Insights{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="/static/css/home.css" />
+<link rel="stylesheet" href="/static/css/repo.css" />
+{% endblock %}
+
+{% block content %}
+<section class="repo-header">
+    <div class="repo-header-top">
+        <a href="/" class="repo-back">← 홈</a>
+        <span class="repo-date" id="repo-date">{{ date }}</span>
+    </div>
+    <h1 class="repo-title">
+        <span class="repo-owner">{{ owner }}</span><span class="repo-slash">/</span><span class="repo-name">{{ name }}</span>
+    </h1>
+    <div class="repo-actions">
+        <a href="https://github.com/{{ repo_name }}" target="_blank" class="btn btn--ghost btn--sm">
+            GitHub ↗
+        </a>
+    </div>
+</section>
+
+<!-- 로딩 / 에러 상태 -->
+<section class="repo-loading" id="repo-loading">
+    <div class="loading-spinner"></div>
+    <p>Athena 에서 시계열 데이터 조회 중…</p>
+</section>
+
+<section class="repo-error" id="repo-error" style="display:none;">
+    <p id="repo-error-msg">데이터를 불러오지 못했습니다.</p>
+</section>
+
+<!-- 본문 (데이터 로딩 후 채움) -->
+<section class="repo-body" id="repo-body" style="display:none;">
+
+    <!-- 헤더 메트릭 -->
+    <div class="repo-metrics-grid">
+        <div class="repo-metric">
+            <div class="repo-metric-label">총 이벤트</div>
+            <div class="repo-metric-value" id="m-events">—</div>
+            <div class="repo-metric-sub" id="m-events-sub"></div>
+        </div>
+        <div class="repo-metric">
+            <div class="repo-metric-label">고유 액터</div>
+            <div class="repo-metric-value" id="m-actors">—</div>
+            <div class="repo-metric-sub">unique users</div>
+        </div>
+        <div class="repo-metric">
+            <div class="repo-metric-label">가속도</div>
+            <div class="repo-metric-value repo-metric-value--acc" id="m-acc">—</div>
+            <div class="repo-metric-sub">전일 대비</div>
+        </div>
+        <div class="repo-metric">
+            <div class="repo-metric-label">Watch z-score</div>
+            <div class="repo-metric-value repo-metric-value--anom" id="m-z">—</div>
+            <div class="repo-metric-sub">표준편차 기준</div>
+        </div>
+    </div>
+
+    <!-- 시계열 차트 -->
+    <div class="repo-chart-card">
+        <div class="repo-chart-header">
+            <h2>📊 24시간 활동 추이</h2>
+            <span class="repo-chart-sub">시간대별 이벤트 수 (UTC)</span>
+        </div>
+        <div class="repo-chart-wrap">
+            <canvas id="hourly-chart"></canvas>
+        </div>
+    </div>
+
+    <!-- 이벤트 타입 분포 -->
+    <div class="repo-types-card">
+        <div class="repo-chart-header">
+            <h2>📋 이벤트 타입 분포</h2>
+            <span class="repo-chart-sub">{{ date }} 일별 집계</span>
+        </div>
+        <div class="repo-types-grid" id="types-grid"></div>
+    </div>
+
+    <!-- 그날의 인사이트 (해당 repo 섹션만) -->
+    <div class="repo-insight-card" id="insight-card" style="display:none;">
+        <div class="repo-chart-header">
+            <h2>💡 그날의 인사이트</h2>
+            <span class="repo-chart-sub">Bedrock Claude 분석</span>
+        </div>
+        <div class="repo-insight-body" id="insight-body"></div>
+    </div>
+
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<!-- Chart.js — 가벼운 라인 차트 -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<!-- marked.js — 인사이트 마크다운 렌더링 -->
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+<script>
+const REPO_NAME = "{{ repo_name }}";
+const OWNER = "{{ owner }}";
+const NAME = "{{ name }}";
+const DATE = "{{ date }}";
+
+async function loadProfile() {
+    const loading = document.getElementById("repo-loading");
+    const error   = document.getElementById("repo-error");
+    const errorMsg = document.getElementById("repo-error-msg");
+    const body    = document.getElementById("repo-body");
+
+    try {
+        const res = await fetch(`/api/repo/${OWNER}/${NAME}/profile?date=${DATE}`);
+        if (!res.ok) {
+            const errBody = await res.json().catch(() => ({}));
+            throw new Error(errBody.detail || `HTTP ${res.status}`);
+        }
+        const data = await res.json();
+
+        // 메트릭이 비어있으면 (데이터 없음) 안내
+        if (!data.metrics || Object.keys(data.metrics).length === 0) {
+            errorMsg.textContent = `${REPO_NAME} 의 ${DATE} 데이터가 없습니다.`;
+            loading.style.display = "none";
+            error.style.display = "block";
+            return;
+        }
+
+        renderMetrics(data.metrics);
+        renderChart(data.timeline);
+        renderTypes(data.metrics);
+        renderInsight(data.insight_section);
+
+        loading.style.display = "none";
+        body.style.display = "block";
+
+    } catch (e) {
+        console.error("repo profile load error:", e);
+        errorMsg.textContent = `로드 실패: ${e.message}`;
+        loading.style.display = "none";
+        error.style.display = "block";
+    }
+}
+
+function renderMetrics(m) {
+    const events = parseInt(m.event_count) || 0;
+    const actors = parseInt(m.unique_actors) || 0;
+    const prevEvents = parseInt(m.prev_event_count) || 0;
+    const acc = parseFloat(m.acceleration_ratio) || 0;
+    const z = parseFloat(m.watch_zscore) || 0;
+
+    document.getElementById("m-events").textContent = events.toLocaleString();
+    document.getElementById("m-events-sub").textContent =
+        prevEvents > 0 ? `전일: ${prevEvents.toLocaleString()}` : "—";
+
+    document.getElementById("m-actors").textContent = actors.toLocaleString();
+
+    const accEl = document.getElementById("m-acc");
+    accEl.textContent = acc > 0 ? `×${acc.toFixed(2)}` : "—";
+
+    const zEl = document.getElementById("m-z");
+    zEl.textContent = z !== 0 ? z.toFixed(2) : "—";
+}
+
+let chartInstance = null;
+function renderChart(timeline) {
+    const ctx = document.getElementById("hourly-chart").getContext("2d");
+    const labels = timeline.map(p => `${String(p.hour).padStart(2, '0')}:00`);
+    const counts = timeline.map(p => p.event_count);
+
+    if (chartInstance) chartInstance.destroy();
+
+    chartInstance = new Chart(ctx, {
+        type: "line",
+        data: {
+            labels: labels,
+            datasets: [{
+                label: "Events",
+                data: counts,
+                borderColor: "#9A93E8",
+                backgroundColor: "rgba(154, 147, 232, 0.15)",
+                borderWidth: 2,
+                tension: 0.35,
+                fill: true,
+                pointRadius: 3,
+                pointHoverRadius: 6,
+                pointBackgroundColor: "#B8B0FF",
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: "#15151D",
+                    titleColor: "#F4F4F8",
+                    bodyColor: "#D8D8E0",
+                    borderColor: "rgba(255,255,255,0.12)",
+                    borderWidth: 1,
+                    padding: 12,
+                    callbacks: {
+                        title: (items) => `${items[0].label} (UTC)`,
+                        label: (item) => {
+                            const idx = item.dataIndex;
+                            const p = timeline[idx];
+                            const lines = [`${item.parsed.y.toLocaleString()} events`];
+                            if (p.dominant_event_type) {
+                                lines.push(`Dominant: ${p.dominant_event_type}`);
+                            }
+                            return lines;
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    grid: { color: "rgba(255,255,255,0.04)" },
+                    ticks: { color: "#8E8E9A", font: { family: "monospace", size: 11 } },
+                },
+                y: {
+                    beginAtZero: true,
+                    grid: { color: "rgba(255,255,255,0.04)" },
+                    ticks: { color: "#8E8E9A", font: { family: "monospace", size: 11 } },
+                }
+            }
+        }
+    });
+}
+
+function renderTypes(m) {
+    const types = [
+        { key: "watch_count", label: "Watch", color: "#F0C868" },
+        { key: "push_count",  label: "Push",  color: "#9A93E8" },
+        { key: "pr_count",    label: "PR",    color: "#6FE8A8" },
+        { key: "issue_count", label: "Issue", color: "#FF8A8A" },
+        { key: "fork_count",  label: "Fork",  color: "#7AC8E8" },
+    ];
+    const total = parseInt(m.event_count) || 1;
+
+    const grid = document.getElementById("types-grid");
+    grid.innerHTML = types.map(t => {
+        const count = parseInt(m[t.key]) || 0;
+        const pct = ((count / total) * 100).toFixed(1);
+        return `
+            <div class="type-row">
+                <div class="type-row-label">
+                    <span class="type-dot" style="background:${t.color}"></span>
+                    <span>${t.label}</span>
+                </div>
+                <div class="type-row-bar">
+                    <div class="type-row-fill" style="width:${pct}%; background:${t.color}"></div>
+                </div>
+                <div class="type-row-count">${count.toLocaleString()}</div>
+                <div class="type-row-pct">${pct}%</div>
+            </div>
+        `;
+    }).join("");
+}
+
+function renderInsight(insightSection) {
+    if (!insightSection) return;
+    const card = document.getElementById("insight-card");
+    const body = document.getElementById("insight-body");
+    body.innerHTML = marked.parse(insightSection);
+    card.style.display = "block";
+}
+
+loadProfile();
+</script>
+{% endblock %}

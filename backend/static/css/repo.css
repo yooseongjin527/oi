@@ -1,0 +1,232 @@
+/* ─── Repo 프로필 페이지 스타일 ─────────────────────── */
+
+.repo-header {
+    max-width: 1200px;
+    margin: 32px auto 24px;
+    padding: 0 24px;
+}
+
+.repo-header-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+}
+
+.repo-back {
+    color: #9A93E8 !important;
+    -webkit-text-fill-color: #9A93E8 !important;
+    text-decoration: none;
+    transition: color 0.15s;
+}
+.repo-back:hover {
+    color: #B8B0FF !important;
+    -webkit-text-fill-color: #B8B0FF !important;
+}
+
+.repo-date {
+    color: #6E6E78;
+    -webkit-text-fill-color: #6E6E78;
+}
+
+.repo-title {
+    margin: 0;
+    font-size: 36px;
+    letter-spacing: -0.02em;
+    color: #F4F4F8;
+    -webkit-text-fill-color: #F4F4F8;
+}
+.repo-owner { color: #A0A0AB; -webkit-text-fill-color: #A0A0AB; font-weight: 400; }
+.repo-slash { color: #6E6E78; -webkit-text-fill-color: #6E6E78; margin: 0 4px; }
+.repo-name  { color: #F4F4F8; -webkit-text-fill-color: #F4F4F8; font-weight: 700; }
+
+.repo-actions {
+    margin-top: 14px;
+}
+
+/* 로딩/에러 */
+.repo-loading,
+.repo-error {
+    max-width: 1200px;
+    margin: 80px auto;
+    padding: 0 24px;
+    text-align: center;
+    color: #9A9AA8;
+    -webkit-text-fill-color: #9A9AA8;
+}
+
+/* 본문 */
+.repo-body {
+    max-width: 1200px;
+    margin: 0 auto 64px;
+    padding: 0 24px;
+}
+
+/* ─── 헤더 메트릭 4열 ─── */
+.repo-metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 28px;
+}
+@media (max-width: 768px) {
+    .repo-metrics-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+.repo-metric {
+    background: #15151D;
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 12px;
+    padding: 18px 20px;
+}
+.repo-metric-label {
+    font-size: 12px;
+    color: #8E8E9A;
+    -webkit-text-fill-color: #8E8E9A;
+    font-family: 'JetBrains Mono', monospace;
+    margin-bottom: 8px;
+    letter-spacing: 0.3px;
+}
+.repo-metric-value {
+    font-size: 28px;
+    font-weight: 700;
+    color: #F4F4F8;
+    -webkit-text-fill-color: #F4F4F8;
+    line-height: 1.1;
+}
+.repo-metric-value--acc { color: #F0C868; -webkit-text-fill-color: #F0C868; }
+.repo-metric-value--anom { color: #FF8A8A; -webkit-text-fill-color: #FF8A8A; }
+.repo-metric-sub {
+    margin-top: 6px;
+    font-size: 11px;
+    color: #6E6E78;
+    -webkit-text-fill-color: #6E6E78;
+    font-family: 'JetBrains Mono', monospace;
+}
+
+/* ─── 차트 카드 (공통) ─── */
+.repo-chart-card,
+.repo-types-card,
+.repo-insight-card {
+    background: #15151D;
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 14px;
+    padding: 24px 28px;
+    margin-bottom: 20px;
+}
+
+.repo-chart-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 18px;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+.repo-chart-header h2 {
+    margin: 0;
+    font-size: 18px;
+    color: #F4F4F8;
+    -webkit-text-fill-color: #F4F4F8;
+    letter-spacing: -0.02em;
+}
+.repo-chart-sub {
+    font-size: 12px;
+    color: #8E8E9A;
+    -webkit-text-fill-color: #8E8E9A;
+    font-family: 'JetBrains Mono', monospace;
+}
+
+.repo-chart-wrap {
+    height: 320px;
+    position: relative;
+}
+
+/* ─── 이벤트 타입 분포 ─── */
+.repo-types-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+.type-row {
+    display: grid;
+    grid-template-columns: 100px 1fr 80px 60px;
+    align-items: center;
+    gap: 12px;
+    font-size: 13px;
+}
+.type-row-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #D8D8E0;
+    -webkit-text-fill-color: #D8D8E0;
+}
+.type-dot {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+}
+.type-row-bar {
+    background: rgba(255,255,255,0.05);
+    height: 8px;
+    border-radius: 4px;
+    overflow: hidden;
+}
+.type-row-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.4s ease-out;
+}
+.type-row-count {
+    font-family: 'JetBrains Mono', monospace;
+    color: #E0E0E8;
+    -webkit-text-fill-color: #E0E0E8;
+    text-align: right;
+}
+.type-row-pct {
+    font-family: 'JetBrains Mono', monospace;
+    color: #8E8E9A;
+    -webkit-text-fill-color: #8E8E9A;
+    text-align: right;
+    font-size: 12px;
+}
+
+/* ─── 인사이트 섹션 ─── */
+.repo-insight-body {
+    color: #D8D8E0;
+    -webkit-text-fill-color: #D8D8E0;
+    line-height: 1.7;
+}
+.repo-insight-body h4,
+.repo-insight-body h3,
+.repo-insight-body h2 {
+    color: #F4F4F8 !important;
+    -webkit-text-fill-color: #F4F4F8 !important;
+    margin-top: 18px;
+    margin-bottom: 10px;
+}
+.repo-insight-body p,
+.repo-insight-body li {
+    color: #D8D8E0 !important;
+    -webkit-text-fill-color: #D8D8E0 !important;
+}
+.repo-insight-body a {
+    color: #B8B0FF !important;
+    -webkit-text-fill-color: #B8B0FF !important;
+}
+.repo-insight-body strong {
+    color: #F4F4F8;
+    -webkit-text-fill-color: #F4F4F8;
+}
+.repo-insight-body code {
+    background: rgba(154,147,232,0.15);
+    color: #B8B0FF;
+    -webkit-text-fill-color: #B8B0FF;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 12px;
+}

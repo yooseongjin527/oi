@@ -86,6 +86,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      opensearch:
+        condition: service_healthy
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
@@ -103,6 +105,7 @@ services:
       OI_ATHENA_WORKGROUP: ${OI_ATHENA_WORKGROUP}
       OI_ATHENA_OUTPUT: ${OI_ATHENA_OUTPUT}
       OI_GLUE_DATABASE: ${OI_GLUE_DATABASE}
+      OI_OPENSEARCH_HOST: ${OI_OPENSEARCH_HOST}
       ADMIN_EMAIL: ${ADMIN_EMAIL}
       ADMIN_USERNAME: ${ADMIN_USERNAME}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD}
@@ -126,6 +129,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      opensearch:
+        condition: service_healthy
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
@@ -133,6 +138,13 @@ services:
       POSTGRES_HOST: ${POSTGRES_HOST}
       POSTGRES_PORT: ${POSTGRES_PORT}
       ADMIN_IP_WHITELIST: ${ADMIN_IP_WHITELIST}
+      AWS_DEFAULT_REGION: ${AWS_DEFAULT_REGION}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+      OI_ATHENA_WORKGROUP: ${OI_ATHENA_WORKGROUP}
+      OI_ATHENA_OUTPUT: ${OI_ATHENA_OUTPUT}
+      OI_GLUE_DATABASE: ${OI_GLUE_DATABASE}
+      OI_OPENSEARCH_HOST: ${OI_OPENSEARCH_HOST}
     volumes:
       - ./streamlit_admin:/app
     ports:
@@ -180,6 +192,53 @@ services:
     volumes:
       # Mount host AWS credentials read-only for boto3 auto-discovery
       - ${HOME}/.aws:/root/.aws:ro
+    networks:
+      - oi-net
+    restart: unless-stopped
+
+# ─── OpenSearch (검색 + 인사이트 히스토리) ──────────────────
+  opensearch:
+    image: opensearchproject/opensearch:2.13.0
+    container_name: oi-opensearch
+    environment:
+      - discovery.type=single-node
+      - DISABLE_SECURITY_PLUGIN=true
+      - DISABLE_INSTALL_DEMO_CONFIG=true
+      - "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m"
+      - bootstrap.memory_lock=false
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 65536
+        hard: 65536
+    ports:
+      - "9200:9200"
+    volumes:
+      - opensearch_data:/usr/share/opensearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fs http://localhost:9200/_cluster/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 40s
+    networks:
+      - oi-net
+    restart: unless-stopped
+
+  # ─── OpenSearch Dashboards (선택, 디버깅용) ─────────────────
+  opensearch-dashboards:
+    image: opensearchproject/opensearch-dashboards:2.13.0
+    container_name: oi-opensearch-dashboards
+    depends_on:
+      opensearch:
+        condition: service_healthy
+    environment:
+      - 'OPENSEARCH_HOSTS=["http://opensearch:9200"]'
+      - DISABLE_SECURITY_DASHBOARDS_PLUGIN=true
+    ports:
+      - "5601:5601"
     networks:
       - oi-net
     restart: unless-stopped
@@ -322,6 +381,7 @@ volumes:
   postgres_data:
   airflow_postgres_data:    
   airflow_logs:  
+  opensearch_data:
 
 networks:
   oi-net:
