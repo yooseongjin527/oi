@@ -23,17 +23,18 @@
         <nav class="site-nav">
             {% block nav %}
                 {% if user %}
-                    {# 로그인 상태 #}
                     {% if user.role.value == "admin" %}
                         <a href="/admin" class="nav-link">관리자</a>
                     {% endif %}
-                    <a href="/dashboard" class="nav-link">대시보드</a>
-                    <span class="nav-user">{{ user.username }}</span>
+                    {% if user.status.value == "approved" %}
+                        <a href="/dashboard" class="nav-link">대시보드</a>
+                    {% endif %}
+                    <a href="/settings" class="nav-link" title="계정 설정">설정</a>
+                    <a href="/settings" class="nav-user" title="{{ user.email }}">{{ user.username }}</a>
                     <form method="post" action="/logout" class="logout-form">
                         <button type="submit" class="nav-link nav-link--logout">로그아웃</button>
                     </form>
                 {% else %}
-                    {# 비로그인 상태 #}
                     <a href="/login" class="nav-link">로그인</a>
                     <a href="/signup" class="nav-link nav-link--cta">회원가입</a>
                 {% endif %}

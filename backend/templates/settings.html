@@ -1,0 +1,144 @@
+{% extends "base.html" %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="/static/css/auth.css" />
+<link rel="stylesheet" href="/static/css/settings.css" />
+{% endblock %}
+
+{% block content %}
+<section class="settings-wrap">
+    <header class="settings-header">
+        <div class="settings-eyebrow">Account</div>
+        <h1 class="settings-title">계정 설정</h1>
+        <p class="settings-sub">프로필 정보와 비밀번호를 관리하고 계정을 탈퇴할 수 있습니다.</p>
+    </header>
+
+    {% if updated %}
+    <div class="settings-flash">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="20 6 9 17 4 12"/>
+        </svg>
+        변경 사항이 저장되었습니다.
+    </div>
+    {% endif %}
+
+    <!-- 프로필 -->
+    <section class="settings-card">
+        <div class="settings-card-head">
+            <h2>프로필</h2>
+            <p>로그인 시 사용하는 이메일과 표시 이름을 변경할 수 있습니다.</p>
+        </div>
+
+        <form method="post" action="/settings/profile" class="auth-form" id="profileForm">
+            <label class="auth-field">
+                <span class="auth-label">이메일</span>
+                <input type="email" name="email" required value="{{ user.email }}" />
+            </label>
+            <label class="auth-field">
+                <span class="auth-label">사용자명</span>
+                <input type="text" name="username" required minlength="3" maxlength="32"
+                       value="{{ user.username }}"
+                       pattern="[가-힣a-zA-Z0-9_-]{3,32}"
+                       placeholder="한글/영문/숫자/_- 3~32자" />
+            </label>
+            <button type="submit" class="btn btn--primary">프로필 저장</button>
+        </form>
+        <div class="auth-error" id="profileError" hidden></div>
+    </section>
+
+    <!-- 비밀번호 -->
+    <section class="settings-card">
+        <div class="settings-card-head">
+            <h2>비밀번호 변경</h2>
+            <p>다른 사이트에서 사용하지 않는 강력한 비밀번호를 권장합니다.</p>
+        </div>
+
+        <form method="post" action="/settings/password" class="auth-form" id="passwordForm">
+            <label class="auth-field">
+                <span class="auth-label">현재 비밀번호</span>
+                <input type="password" name="current_password" required
+                       autocomplete="current-password" />
+            </label>
+            <label class="auth-field">
+                <span class="auth-label">새 비밀번호</span>
+                <input type="password" name="new_password" required minlength="8"
+                       autocomplete="new-password" placeholder="최소 8자" />
+            </label>
+            <button type="submit" class="btn btn--primary">비밀번호 변경</button>
+        </form>
+        <div class="auth-error" id="passwordError" hidden></div>
+    </section>
+
+    <!-- 계정 정보 (읽기 전용) -->
+    <section class="settings-card settings-card--info">
+        <div class="settings-card-head">
+            <h2>계정 정보</h2>
+        </div>
+        <dl class="settings-info">
+            <div><dt>상태</dt><dd><span class="status status--{{ user.status.value }}">{{ user.status.value }}</span></dd></div>
+            <div><dt>권한</dt><dd><span class="role role--{{ user.role.value }}">{{ user.role.value }}</span></dd></div>
+            <div><dt>가입일</dt><dd>{{ user.created_at.strftime('%Y-%m-%d %H:%M') }}</dd></div>
+            {% if user.approved_at %}
+            <div><dt>승인일</dt><dd>{{ user.approved_at.strftime('%Y-%m-%d %H:%M') }}</dd></div>
+            {% endif %}
+        </dl>
+    </section>
+
+    <!-- 위험 영역 — 탈퇴 -->
+    <section class="settings-card settings-card--danger">
+        <div class="settings-card-head">
+            <h2>회원 탈퇴</h2>
+            <p>탈퇴 시 계정과 관련된 모든 데이터가 영구 삭제됩니다. 복구할 수 없습니다.</p>
+        </div>
+
+        {% if user.role.value == "admin" %}
+        <div class="settings-info-note">
+            관리자 계정은 본인 탈퇴가 불가능합니다. 다른 관리자에게 요청하세요.
+        </div>
+        {% else %}
+        <form method="post" action="/account/delete" class="auth-form" id="deleteForm">
+            <label class="auth-field">
+                <span class="auth-label">비밀번호 확인</span>
+                <input type="password" name="password" required
+                       autocomplete="current-password" placeholder="탈퇴를 위해 비밀번호를 입력하세요" />
+            </label>
+            <button type="submit" class="btn btn--danger">계정 영구 삭제</button>
+        </form>
+        <div class="auth-error" id="deleteError" hidden></div>
+        {% endif %}
+    </section>
+</section>
+
+<script>
+function bindAjaxForm(formId, errId, opts = {}) {
+    const form = document.getElementById(formId);
+    if (!form) return;
+    const errBox = document.getElementById(errId);
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        if (opts.confirm && !confirm(opts.confirm)) return;
+        errBox.hidden = true;
+        const fd = new FormData(form);
+        try {
+            const res = await fetch(form.action, { method: 'POST', body: fd, redirect: 'follow' });
+            if (res.redirected) { window.location.href = res.url; return; }
+            if (!res.ok) {
+                const data = await res.json().catch(() => ({}));
+                errBox.textContent = data.detail || '요청 처리 중 오류가 발생했습니다.';
+                errBox.hidden = false;
+            }
+        } catch (err) {
+            errBox.textContent = '네트워크 오류가 발생했습니다.';
+            errBox.hidden = false;
+        }
+    });
+}
+
+bindAjaxForm('profileForm', 'profileError');
+bindAjaxForm('passwordForm', 'passwordError');
+bindAjaxForm('deleteForm', 'deleteError', {
+    confirm: '정말 탈퇴하시겠습니까? 모든 데이터가 영구 삭제됩니다.'
+});
+</script>
+{% endblock %}

@@ -9,7 +9,7 @@ from fastapi.staticfiles import StaticFiles
 import models  # noqa: F401  (Base.metadata에 모델 등록)
 from auth import RedirectException
 from database import Base, engine
-from routers import admin_router, auth_router, pages, insights, search, repo, category
+from routers import admin_router, auth_router, pages, insights, search, repo, category, language
 
 # DB 테이블 자동 생성
 Base.metadata.create_all(bind=engine)
@@ -38,6 +38,7 @@ app.include_router(insights.router)
 app.include_router(search.router)
 app.include_router(repo.router)
 app.include_router(category.router)
+app.include_router(language.router)
 
 
 @app.get("/health")

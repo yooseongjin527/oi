@@ -7,6 +7,7 @@
 {% block content %}
 <div class="auth-container">
     <div class="auth-card">
+    
         <h1 class="auth-title">회원가입</h1>
         <p class="auth-sub">가입 후 관리자 승인이 필요합니다.</p>
 
@@ -20,8 +21,8 @@
             <label class="auth-field">
                 <span class="auth-label">사용자명</span>
                 <input type="text" name="username" required minlength="3" maxlength="32"
-                       autocomplete="username" pattern="[a-zA-Z0-9_-]{3,32}"
-                       placeholder="영문/숫자/_- 3~32자" />
+                       autocomplete="username" pattern="[가-힣a-zA-Z0-9_\-]{3,32}"
+                       placeholder="한글/영문/숫자/_- 3~32자" />
             </label>
 
             <label class="auth-field">

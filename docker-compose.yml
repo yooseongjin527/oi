@@ -315,10 +315,17 @@ services:
       - AIRFLOW__CORE__DAGS_FOLDER=/opt/airflow/dags
       - AIRFLOW__SCHEDULER__DAG_DIR_LIST_INTERVAL=30
       # Day 4부터 boto3 등 추가 패키지가 필요하면 여기 추가
-      - _PIP_ADDITIONAL_REQUIREMENTS=boto3==1.35.49 requests==2.32.3
+      - _PIP_ADDITIONAL_REQUIREMENTS=boto3==1.35.49 requests==2.32.3 opensearch-py==2.6.0
       # AWS region (boto3가 마운트한 ~/.aws/credentials 의 region 못 읽으면 fallback)
       - AWS_DEFAULT_REGION=${AWS_REGION}
+      - AWS_REGION=${AWS_REGION}
       - AWS_S3_BUCKET=${AWS_S3_BUCKET}
+      - OI_GLUE_DATABASE=${OI_GLUE_DATABASE}
+      - OI_ATHENA_WORKGROUP=${OI_ATHENA_WORKGROUP}
+      # categorize_daily DAG 가 필요로 함
+      - OI_BEDROCK_REGION=${OI_BEDROCK_REGION}
+      - OI_BEDROCK_MODEL_ID=${OI_BEDROCK_MODEL_ID}
+      - OI_OPENSEARCH_HOST=${OI_OPENSEARCH_HOST}
     user: "${AIRFLOW_UID}:0"
     volumes:
       - ./airflow/dags:/opt/airflow/dags
@@ -352,9 +359,15 @@ services:
       - AIRFLOW__CORE__LOAD_EXAMPLES=False
       - AIRFLOW__CORE__DAGS_FOLDER=/opt/airflow/dags
       - AIRFLOW__WEBSERVER__EXPOSE_CONFIG=False
-      - _PIP_ADDITIONAL_REQUIREMENTS=boto3==1.35.49 requests==2.32.3       # ← 추가
+      - _PIP_ADDITIONAL_REQUIREMENTS=boto3==1.35.49 requests==2.32.3 opensearch-py==2.6.0       # ← 추가
       - AWS_DEFAULT_REGION=${AWS_REGION}
+      - AWS_REGION=${AWS_REGION}
       - AWS_S3_BUCKET=${AWS_S3_BUCKET}
+      - OI_GLUE_DATABASE=${OI_GLUE_DATABASE}
+      - OI_ATHENA_WORKGROUP=${OI_ATHENA_WORKGROUP}
+      - OI_BEDROCK_REGION=${OI_BEDROCK_REGION}
+      - OI_BEDROCK_MODEL_ID=${OI_BEDROCK_MODEL_ID}
+      - OI_OPENSEARCH_HOST=${OI_OPENSEARCH_HOST}
     user: "${AIRFLOW_UID}:0"
     volumes:
       - ./airflow/dags:/opt/airflow/dags

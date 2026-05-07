@@ -7,13 +7,62 @@
 {% block content %}
 <div class="auth-container">
     <div class="auth-card auth-card--narrow">
-        <div class="pending-icon">⏳</div>
-        <h1 class="auth-title">승인 대기 중</h1>
-        <p class="auth-sub">
-            가입 요청이 접수되었습니다.<br />
-            관리자 승인 후 로그인하실 수 있습니다.
-        </p>
-        <a href="/" class="btn btn--ghost auth-submit">홈으로 돌아가기</a>
+        {% if user and user.status.value == "rejected" %}
+            {# ── 거부된 계정 ── #}
+            <div class="pending-icon pending-icon--danger" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"/>
+                    <line x1="15" y1="9" x2="9" y2="15"/>
+                    <line x1="9" y1="9" x2="15" y2="15"/>
+                </svg>
+            </div>
+            <h1 class="auth-title">가입이 거부된 계정입니다</h1>
+            <p class="auth-sub">
+                관리자에 의해 가입이 거부되었습니다.<br />
+                계정 설정에서 직접 탈퇴하거나 관리자에게 문의해 주세요.
+            </p>
+            <div class="auth-actions">
+                <a href="/settings" class="btn btn--primary auth-submit">계정 설정으로 이동</a>
+                <form method="post" action="/logout" class="logout-form-block">
+                    <button type="submit" class="btn btn--ghost auth-submit">로그아웃</button>
+                </form>
+            </div>
+
+        {% elif user and user.status.value == "pending" %}
+            {# ── 승인 대기 ── #}
+            <div class="pending-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"/>
+                    <polyline points="12 6 12 12 16 14"/>
+                </svg>
+            </div>
+            <h1 class="auth-title">승인 대기 중</h1>
+            <p class="auth-sub">
+                가입 요청이 접수되었습니다.<br />
+                관리자 승인 후 대시보드를 이용하실 수 있습니다.
+            </p>
+            <div class="auth-actions">
+                <a href="/settings" class="btn btn--ghost auth-submit">계정 설정</a>
+                <form method="post" action="/logout" class="logout-form-block">
+                    <button type="submit" class="btn btn--ghost auth-submit">로그아웃</button>
+                </form>
+            </div>
+
+        {% else %}
+            {# ── 비로그인 사용자가 직접 진입한 경우 ── #}
+            <div class="pending-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"/>
+                    <polyline points="12 6 12 12 16 14"/>
+                </svg>
+            </div>
+            <h1 class="auth-title">승인 대기 중</h1>
+            <p class="auth-sub">
+                가입 요청이 접수되었습니다.<br />
+                관리자 승인 후 로그인하실 수 있습니다.
+            </p>
+            <a href="/" class="btn btn--ghost auth-submit">홈으로 돌아가기</a>
+        {% endif %}
     </div>
 </div>
 {% endblock %}

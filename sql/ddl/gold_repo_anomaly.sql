@@ -20,5 +20,5 @@ CREATE EXTERNAL TABLE IF NOT EXISTS oi.gold_repo_anomaly (
 )
 PARTITIONED BY (year STRING, month STRING, day STRING)
 STORED AS PARQUET
-LOCATION 's3://oi-data-lake/gold/repo_anomaly/'
+LOCATION 's3://${BUCKET}/gold/repo_anomaly/'
 TBLPROPERTIES ('parquet.compression'='SNAPPY');

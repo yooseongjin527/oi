@@ -50,7 +50,11 @@
                     </form>
                     <form method="post" action="/admin/users/{{ u.id }}/reject"
                           onsubmit="return confirm('정말 거부하시겠습니까?');">
-                        <button type="submit" class="btn btn--danger btn--sm">거부</button>
+                        <button type="submit" class="btn btn--ghost btn--sm">거부</button>
+                    </form>
+                    <form method="post" action="/admin/users/{{ u.id }}/delete"
+                          onsubmit="return confirm('이 사용자를 영구 삭제합니다. 이 작업은 되돌릴 수 없습니다. 계속하시겠습니까?');">
+                        <button type="submit" class="btn btn--danger btn--sm" title="영구 삭제">삭제</button>
                     </form>
                 </div>
             </article>
@@ -78,6 +82,7 @@
                     <th>상태</th>
                     <th>권한</th>
                     <th>가입일</th>
+                    <th class="col-actions">액션</th>
                 </tr>
             </thead>
             <tbody>
@@ -97,6 +102,22 @@
                         </span>
                     </td>
                     <td class="dim">{{ u.created_at.strftime('%Y-%m-%d') }}</td>
+                    <td class="col-actions">
+                        {% if u.id != user.id and u.role.value != "admin" %}
+                            {% if u.status.value == "rejected" %}
+                            <form method="post" action="/admin/users/{{ u.id }}/approve" class="inline-form">
+                                <button type="submit" class="btn-icon" title="승인 복귀">↻</button>
+                            </form>
+                            {% endif %}
+                            <form method="post" action="/admin/users/{{ u.id }}/delete"
+                                  class="inline-form"
+                                  onsubmit="return confirm('{{ u.username }} 계정을 영구 삭제합니다. 계속하시겠습니까?');">
+                                <button type="submit" class="btn-icon btn-icon--danger" title="영구 삭제">×</button>
+                            </form>
+                        {% else %}
+                            <span class="dim mono" title="자기 자신/관리자는 삭제 불가">—</span>
+                        {% endif %}
+                    </td>
                 </tr>
                 {% endfor %}
             </tbody>

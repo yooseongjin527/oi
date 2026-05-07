@@ -17,7 +17,8 @@
     padding: 4px 12px;
     border-radius: 999px;
     background: var(--accent-soft);
-    color: var(--accent-hover);
+    color: var(--accent-bright);
+    -webkit-text-fill-color: var(--accent-bright);
     font-family: var(--font-mono);
     font-size: 11px;
     letter-spacing: 0.5px;
@@ -43,7 +44,8 @@
     font-family: var(--font-mono);
     font-size: 28px;
     font-weight: 700;
-    color: var(--accent-hover);
+    color: var(--accent-bright);
+    -webkit-text-fill-color: var(--accent-bright);
     line-height: 1;
 }
 .stat-label {
@@ -110,15 +112,42 @@
 /* ─── Buttons (size + danger) ───────────────── */
 .btn--sm { padding: 8px 16px; font-size: 13px; }
 .btn--danger {
-    background: rgba(242, 93, 93, 0.12);
+    background: var(--danger-soft);
     color: var(--danger);
-    border: 1px solid rgba(242, 93, 93, 0.3);
+    border: 1px solid rgba(242, 93, 93, 0.35);
+    transition: all 0.18s ease;
 }
 .btn--danger:hover {
-    background: rgba(242, 93, 93, 0.2);
+    background: rgba(242, 93, 93, 0.22);
+    color: var(--danger);
+    border-color: var(--danger);
+    transform: translateY(-1px);
+}
+
+/* 인라인 아이콘 버튼 (테이블 액션 셀) */
+.inline-form { display: inline; margin: 0 2px; }
+.btn-icon {
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    border-radius: 6px;
+    border: 1px solid var(--border-strong);
+    background: var(--surface-elevated);
+    color: var(--text-secondary);
+    font-family: var(--font-mono);
+    font-size: 14px;
+    line-height: 1;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+.btn-icon:hover { background: var(--surface); color: var(--text-primary); border-color: var(--border-accent); }
+.btn-icon--danger { color: var(--danger); border-color: rgba(242, 93, 93, 0.3); }
+.btn-icon--danger:hover {
+    background: var(--danger-soft);
     color: var(--danger);
     border-color: var(--danger);
 }
+.col-actions { white-space: nowrap; text-align: right; }
 
 /* ─── User Table ─────────────────────────────── */
 .user-table {

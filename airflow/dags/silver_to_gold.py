@@ -18,22 +18,21 @@ from datetime import datetime, timedelta, timezone
 
 import boto3
 from airflow.decorators import dag, task
-from airflow.datasets import Dataset
 
 logger = logging.getLogger(__name__)
 
-REGION = "ap-northeast-2"
-BUCKET = "oi-data-lake"
+import os
+
+REGION = os.environ.get("AWS_REGION", os.environ.get("AWS_DEFAULT_REGION", "ap-northeast-2"))
+BUCKET = os.environ.get("AWS_S3_BUCKET", "oi-data-lake")
 GOLD_REPO_PREFIX = "gold/repo_daily"
 GOLD_ACTOR_PREFIX = "gold/actor_daily"
 GOLD_ACCEL_PREFIX = "gold/repo_acceleration"
 GOLD_ANOMALY_PREFIX = "gold/repo_anomaly"
 GOLD_HOURLY_PREFIX = "gold/repo_hourly"
-WORKGROUP = "oi-workgroup"
-DATABASE = "oi"
-
-SILVER_DAILY = Dataset("s3://oi-data-lake/silver/events/")
-
+GOLD_LANG_PREFIX = "gold/language_activity"
+WORKGROUP = os.environ.get("OI_ATHENA_WORKGROUP", "oi-workgroup")
+DATABASE = os.environ.get("OI_GLUE_DATABASE", "oi")
 
 def _athena_run(sql: str, poll_seconds: float = 2.0):
     athena = boto3.client("athena", region_name=REGION)
@@ -85,7 +84,7 @@ def _s3_cleanup(prefix: str):
 @dag(
     dag_id="silver_to_gold",
     start_date=datetime(2026, 4, 27, tzinfo=timezone.utc),
-    schedule=[SILVER_DAILY],
+    schedule="0 3 * * *",                     # bronze_to_silver(02:00) 후 1시간 lag
     catchup=True,
     max_active_runs=2,
     default_args={"owner": "jin", "retries": 1, "retry_delay": timedelta(minutes=5)},
@@ -102,6 +101,7 @@ def silver_to_gold_dag():
             "accel": f"{GOLD_ACCEL_PREFIX}/year={y}/month={m}/day={d}/",
             "anomaly": f"{GOLD_ANOMALY_PREFIX}/year={y}/month={m}/day={d}/",
             "hourly": f"{GOLD_HOURLY_PREFIX}/year={y}/month={m}/day={d}/",
+            "lang":   f"{GOLD_LANG_PREFIX}/year={y}/month={m}/day={d}/",
         }
         return {k: _s3_cleanup(p) for k, p in prefixes.items()}
 
@@ -302,9 +302,34 @@ def silver_to_gold_dag():
         resp = _athena_run(sql)
         return {"qid": resp["QueryExecutionId"]}
 
+    @task
+    def insert_language_activity(logical_date=None):
+        """F4: hour × language 히트맵 마트.
+
+        - silver.repo_language 정규화 결과 그대로 사용 (Unknown 포함)
+        - 'Unknown' 도 한 카테고리로 유지 — F4 화면에서 별도 처리 가능
+        """
+        y, m, d = _parts(logical_date)
+        sql = f"""
+        INSERT INTO oi.gold_language_activity
+        SELECT
+            DATE '{y}-{m}-{d}'                              AS event_date,
+            CAST(hour AS integer)                            AS hour,
+            repo_language                                    AS language,
+            COUNT(*)                                       AS event_count,
+            COUNT(DISTINCT repo_id)                          AS unique_repos,
+            COUNT(DISTINCT actor_id)                         AS unique_actors,
+            '{y}' AS year, '{m}' AS month, '{d}' AS day
+        FROM oi.silver_events
+        WHERE year = '{y}' AND month = '{m}' AND day = '{d}'
+        GROUP BY CAST(hour AS integer), repo_language
+        """
+        resp = _athena_run(sql)
+        return {"qid": resp["QueryExecutionId"]}
+
     # ---------------------- verify 확장 -----------------------
 
-    @task(outlets=[])
+    @task
     def verify(logical_date=None):
         y, m, d = _parts(logical_date)
         sql = f"""
@@ -318,29 +343,30 @@ def silver_to_gold_dag():
           (SELECT COUNT(*) FROM oi.gold_repo_anomaly
             WHERE year = '{y}' AND month = '{m}' AND day = '{d}') AS anomaly,
           (SELECT COUNT(*) FROM oi.gold_repo_hourly
-            WHERE year = '{y}' AND month = '{m}' AND day = '{d}') AS hourly
+            WHERE year = '{y}' AND month = '{m}' AND day = '{d}') AS hourly,
+          (SELECT COUNT(*) FROM oi.gold_language_activity
+            WHERE year = '{y}' AND month = '{m}' AND day = '{d}') AS lang
         """
         resp = _athena_run(sql)
         qid = resp["QueryExecutionId"]
         athena = boto3.client("athena", region_name=REGION)
         rows = athena.get_query_results(QueryExecutionId=qid)["ResultSet"]["Rows"]
         vals = [c.get("VarCharValue") for c in rows[1]["Data"]]
-        repos, actors, accel, anomaly, hourly = (int(v) for v in vals)
+        repos, actors, accel, anomaly, hourly, lang = (int(v) for v in vals)
         logger.info(
-            "Gold %s-%s-%s: repos=%s actors=%s accel=%s anomaly=%s hourly=%s",
-            y, m, d, repos, actors, accel, anomaly, hourly,
+            "Gold %s-%s-%s: repos=%s actors=%s accel=%s anomaly=%s hourly=%s lang=%s",
+            y, m, d, repos, actors, accel, anomaly, hourly, lang,
         )
-        # accel은 첫 백필일(04-27)에도 행이 생김 (prev=0인 채로). 단지 ratio가 NULL.
-        # 모든 마트가 비어있으면 silver 자체가 비었을 가능성 → fail.
-        if min(repos, actors, accel, anomaly, hourly) == 0:
+        if min(repos, actors, accel, anomaly, hourly, lang) == 0:
             raise RuntimeError(
                 f"Gold empty for {y}-{m}-{d}: "
                 f"repos={repos} actors={actors} accel={accel} "
-                f"anomaly={anomaly} hourly={hourly}"
+                f"anomaly={anomaly} hourly={hourly} lang={lang}"
             )
         return {
             "repos": repos, "actors": actors,
-            "accel": accel, "anomaly": anomaly, "hourly": hourly,
+            "accel": accel, "anomaly": anomaly,
+            "hourly": hourly, "lang": lang,
         }
 
     c = cleanup()
@@ -348,9 +374,10 @@ def silver_to_gold_dag():
     a = insert_actor_daily()
     f2 = insert_repo_acceleration()
     f3 = insert_repo_anomaly()
-    f4 = insert_repo_hourly()
+    f4_hourly = insert_repo_hourly()
+    f4_lang = insert_language_activity()
     v = verify()
-    c >> [r, a, f2, f3, f4] >> v
+    c >> [r, a, f2, f3, f4_hourly, f4_lang] >> v
 
 
 dag_instance = silver_to_gold_dag()

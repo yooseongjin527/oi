@@ -8,17 +8,24 @@
 
 {% block content %}
 <section class="hero">
-    <div class="hero-eyebrow">Real-time GitHub Trending Analytics</div>
+    <div class="hero-glow" aria-hidden="true"></div>
+
+    <div class="hero-eyebrow">
+        <span class="live-dot"></span>
+        Real-time GitHub Trending Analytics
+    </div>
+
     <h1 class="hero-title">
         GitHub Trending을 매일 본다.<br />
         하지만 <em>왜</em> 떴는지는 아무도 안 알려준다.
     </h1>
+
     <p class="hero-sub">
         OI는 5분 단위로 GitHub 활동을 추적하고, 급부상 중인 repo와 그 원인을<br />
         AI가 한국어로 요약해 드립니다. 가속도 점수, 이상 급등 탐지까지 한 화면에서.
     </p>
 
-    {# CTA: 비로그인이면 회원가입, 로그인+승인이면 대시보드, 로그인+대기면 안내 #}
+    {# CTA #}
     <div class="hero-cta">
         {% if user and user.status.value == "approved" %}
             <a href="/dashboard" class="btn btn--primary">트렌드 대시보드 열기 →</a>
@@ -29,13 +36,41 @@
             <a href="/login" class="btn btn--ghost">로그인</a>
         {% endif %}
     </div>
+
+    {# Hero stats — 서비스 임팩트 시각화 #}
+    <div class="hero-stats">
+        <div class="hero-stat">
+            <div class="hero-stat-value">5<span class="hero-stat-unit">min</span></div>
+            <div class="hero-stat-label">수집 주기</div>
+        </div>
+        <div class="hero-stat-divider" aria-hidden="true"></div>
+        <div class="hero-stat">
+            <div class="hero-stat-value">6<span class="hero-stat-unit">cat</span></div>
+            <div class="hero-stat-label">자동 분류</div>
+        </div>
+        <div class="hero-stat-divider" aria-hidden="true"></div>
+        <div class="hero-stat">
+            <div class="hero-stat-value">24<span class="hero-stat-unit">h</span></div>
+            <div class="hero-stat-label">시계열 추이</div>
+        </div>
+        <div class="hero-stat-divider" aria-hidden="true"></div>
+        <div class="hero-stat">
+            <div class="hero-stat-value">AI<span class="hero-stat-unit">·KR</span></div>
+            <div class="hero-stat-label">한국어 인사이트</div>
+        </div>
+    </div>
 </section>
 
 {# ── 비로그인/대기 상태 안내 배너 (승인된 사용자에겐 안 보임) ── #}
 {% if not user or user.status.value != "approved" %}
 <section class="access-banner">
     <div class="access-banner-inner">
-        <div class="access-banner-icon">🔒</div>
+        <div class="access-banner-icon" aria-hidden="true">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="11" width="18" height="11" rx="2"/>
+                <path d="M7 11V7a5 5 0 0110 0v4"/>
+            </svg>
+        </div>
         <div class="access-banner-body">
             <h3>실시간 트렌드 분석은 로그인 후 이용 가능합니다</h3>
             <p>
@@ -48,38 +83,79 @@
 {% endif %}
 
 <section id="features" class="features">
-    <h2 class="features-title">제공 기능</h2>
+    <div class="features-eyebrow">제공 기능</div>
+    <h2 class="features-title">데이터에서 <em>왜</em>를 끌어내는 6가지 분석</h2>
+
     <div class="feature-grid">
-        <article class="feature-card">
-            <div class="feature-icon">✨</div>
+        <article class="feature-card feature-card--ai">
+            <div class="feature-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+                </svg>
+            </div>
             <h3>AI 인사이트 카드</h3>
             <p>트렌딩 repo의 부상 원인을 Claude가 한국어로 2~3문장 요약합니다.</p>
         </article>
-        <article class="feature-card">
-            <div class="feature-icon">📈</div>
+
+        <article class="feature-card feature-card--trend">
+            <div class="feature-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/>
+                    <polyline points="16 7 22 7 22 13"/>
+                </svg>
+            </div>
             <h3>가속도 점수</h3>
             <p>5분 단위 변화율 기반 트렌딩 Top 10 라이브 차트를 제공합니다.</p>
         </article>
-        <article class="feature-card">
-            <div class="feature-icon">⚠️</div>
+
+        <article class="feature-card feature-card--anom">
+            <div class="feature-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+                    <line x1="12" y1="9" x2="12" y2="13"/>
+                    <line x1="12" y1="17" x2="12.01" y2="17"/>
+                </svg>
+            </div>
             <h3>이상 급등 탐지</h3>
             <p>z-score 기반 급등을 감지하고 봇/바이럴 패턴을 자동 구분합니다.</p>
         </article>
-        <article class="feature-card">
-            <div class="feature-icon">🌐</div>
+
+        <article class="feature-card feature-card--lang">
+            <div class="feature-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="3" width="7" height="7" rx="1"/>
+                    <rect x="14" y="3" width="7" height="7" rx="1"/>
+                    <rect x="3" y="14" width="7" height="7" rx="1"/>
+                    <rect x="14" y="14" width="7" height="7" rx="1"/>
+                </svg>
+            </div>
             <h3>언어 활동 히트맵</h3>
             <p>시간대별 프로그래밍 언어별 활동량을 한눈에 시각화합니다.</p>
         </article>
-        <article class="feature-card">
-            <div class="feature-icon">🏷️</div>
+
+        <article class="feature-card feature-card--cat">
+            <div class="feature-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M20.59 13.41L13.42 20.58a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/>
+                    <line x1="7" y1="7" x2="7.01" y2="7"/>
+                </svg>
+            </div>
             <h3>카테고리별 트렌딩</h3>
             <p>AI/ML, Web, Infra, Game 등 LLM이 자동 분류한 카테고리 뷰.</p>
         </article>
-        <article class="feature-card">
-            <div class="feature-icon">📊</div>
+
+        <article class="feature-card feature-card--repo">
+            <div class="feature-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/>
+                    <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
+                    <line x1="12" y1="22.08" x2="12" y2="12"/>
+                </svg>
+            </div>
             <h3>Repo 프로필</h3>
             <p>24h/7d 활동 추이, 주요 contributor, 관련 저장소를 표시합니다.</p>
         </article>
     </div>
 </section>
+
 {% endblock %}

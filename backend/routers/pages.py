@@ -2,7 +2,7 @@
 
 POST 액션은 routers/auth_router.py 참조.
 """
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Query, Request
 from fastapi.templating import Jinja2Templates
 
 from auth import get_optional_user, require_approved_user_page
@@ -13,7 +13,6 @@ templates = Jinja2Templates(directory="templates")
 
 
 # ─── 홈 (비로그인/로그인 모두 허용) ─────────────────────
-# home.html 은 user 변수를 봐서 hero CTA 와 안내 배너를 분기 처리.
 @router.get("/")
 def home(request: Request, user=Depends(get_optional_user)):
     return templates.TemplateResponse(
@@ -24,32 +23,52 @@ def home(request: Request, user=Depends(get_optional_user)):
 
 # ─── 회원가입 / 로그인 / pending ─────────────────────────
 @router.get("/signup")
-def signup_page(request: Request):
+def signup_page(request: Request, user=Depends(get_optional_user)):
     return templates.TemplateResponse(
         "signup.html",
-        {"request": request, "user": None, "title": "회원가입"},
+        {"request": request, "user": user, "title": "회원가입"},
     )
 
 
 @router.get("/login")
-def login_page(request: Request):
+def login_page(request: Request, user=Depends(get_optional_user)):
     return templates.TemplateResponse(
         "login.html",
-        {"request": request, "user": None, "title": "로그인"},
+        {"request": request, "user": user, "title": "로그인"},
     )
 
 
+# pending 페이지 — 비로그인이어도 접근 가능 (가입 직후 정보 조회용)
 @router.get("/pending")
-def pending_page(request: Request):
+def pending_page(request: Request, user=Depends(get_optional_user)):
     return templates.TemplateResponse(
         "pending.html",
-        {"request": request, "user": None, "title": "승인 대기 중"},
+        {"request": request, "user": user, "title": "승인 대기 중"},
+    )
+
+
+# ─── 비밀번호 찾기 / 재설정 ─────────────────────────────
+@router.get("/forgot-password")
+def forgot_password_page(request: Request, user=Depends(get_optional_user)):
+    return templates.TemplateResponse(
+        "forgot_password.html",
+        {"request": request, "user": user, "title": "비밀번호 찾기"},
+    )
+
+
+@router.get("/reset-password")
+def reset_password_page(
+    request: Request,
+    token: str = Query("", description="발급받은 재설정 토큰"),
+    user=Depends(get_optional_user),
+):
+    return templates.TemplateResponse(
+        "reset_password.html",
+        {"request": request, "user": user, "title": "비밀번호 재설정", "token": token},
     )
 
 
 # ─── 대시보드 (approved 사용자만, 미승인 시 redirect) ──
-# require_approved_user_page 는 비로그인 → /login, pending → /pending, rejected → /login
-# 으로 자동 redirect 시킴 (RedirectException 을 main.py 핸들러가 받음).
 @router.get("/dashboard")
 def dashboard(
     request: Request,
@@ -58,4 +77,25 @@ def dashboard(
     return templates.TemplateResponse(
         "dashboard.html",
         {"request": request, "user": user, "title": "대시보드"},
+    )
+
+
+# ─── 계정 설정 (로그인된 사용자 — pending 포함) ─────────
+@router.get("/settings")
+def settings_page(
+    request: Request,
+    updated: int = Query(0),
+    user=Depends(get_optional_user),
+):
+    if not user:
+        from fastapi.responses import RedirectResponse
+        return RedirectResponse(url="/login", status_code=303)
+    return templates.TemplateResponse(
+        "settings.html",
+        {
+            "request": request,
+            "user": user,
+            "title": "계정 설정",
+            "updated": bool(updated),
+        },
     )

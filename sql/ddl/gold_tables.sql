@@ -20,5 +20,5 @@ PARTITIONED BY (
     day   STRING
 )
 STORED AS PARQUET
-LOCATION 's3://oi-data-lake/gold/repo_daily/'
+LOCATION 's3://${BUCKET}/gold/repo_daily/'
 TBLPROPERTIES ('parquet.compression' = 'SNAPPY');

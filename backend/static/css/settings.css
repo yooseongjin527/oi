@@ -1,0 +1,170 @@
+/* ============================================
+   OI — settings.css (계정 설정 페이지)
+   ============================================ */
+
+.settings-wrap {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 8px 0 40px;
+    animation: oi-fade-in 0.4s ease both;
+}
+
+.settings-header {
+    margin-bottom: 28px;
+}
+.settings-eyebrow {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 999px;
+    background: var(--accent-soft);
+    color: var(--accent-bright);
+    -webkit-text-fill-color: var(--accent-bright);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.5px;
+    margin-bottom: 12px;
+    text-transform: uppercase;
+}
+.settings-title {
+    font-size: clamp(26px, 3.2vw, 32px);
+    font-weight: 700;
+    letter-spacing: -0.025em;
+    margin: 0 0 8px;
+    color: var(--text-primary);
+    -webkit-text-fill-color: var(--text-primary);
+}
+.settings-sub {
+    color: var(--text-secondary);
+    -webkit-text-fill-color: var(--text-secondary);
+    margin: 0;
+    font-size: 14px;
+    line-height: 1.65;
+}
+
+.settings-flash {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 16px;
+    background: var(--success-soft);
+    border: 1px solid rgba(109, 217, 161, 0.3);
+    border-radius: var(--radius-md);
+    color: var(--success);
+    -webkit-text-fill-color: var(--success);
+    font-size: 13.5px;
+    margin-bottom: 20px;
+}
+
+.settings-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 24px 26px;
+    margin-bottom: 18px;
+    position: relative;
+    overflow: hidden;
+}
+.settings-card::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--accent-bright), transparent);
+    opacity: 0.4;
+}
+.settings-card--danger::before {
+    background: linear-gradient(90deg, transparent, var(--danger), transparent);
+}
+.settings-card--info::before { display: none; }
+.settings-card--info { background: var(--bg-elevated); }
+
+.settings-card-head {
+    margin-bottom: 18px;
+}
+.settings-card-head h2 {
+    font-size: 17px;
+    font-weight: 700;
+    margin: 0 0 6px;
+    letter-spacing: -0.01em;
+    color: var(--text-primary);
+    -webkit-text-fill-color: var(--text-primary);
+}
+.settings-card-head p {
+    margin: 0;
+    color: var(--text-secondary);
+    -webkit-text-fill-color: var(--text-secondary);
+    font-size: 13px;
+    line-height: 1.6;
+}
+.settings-card--danger .settings-card-head h2 {
+    color: var(--danger);
+    -webkit-text-fill-color: var(--danger);
+}
+
+.settings-info {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 14px 24px;
+    margin: 0;
+}
+.settings-info > div {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+.settings-info dt {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-tertiary);
+    -webkit-text-fill-color: var(--text-tertiary);
+    letter-spacing: 0.4px;
+    text-transform: uppercase;
+}
+.settings-info dd {
+    margin: 0;
+    color: var(--text-primary);
+    -webkit-text-fill-color: var(--text-primary);
+    font-size: 14px;
+}
+
+.settings-info-note {
+    padding: 12px 14px;
+    background: var(--surface-elevated);
+    border: 1px dashed var(--border-strong);
+    border-radius: var(--radius-md);
+    color: var(--text-secondary);
+    -webkit-text-fill-color: var(--text-secondary);
+    font-size: 13.5px;
+}
+
+/* status / role pill 재사용 (admin.css 와 동일) — settings 페이지 단독 조회용 */
+.status, .role {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.4px;
+}
+.status--approved { background: var(--success-soft); color: var(--success); -webkit-text-fill-color: var(--success); }
+.status--rejected { background: var(--danger-soft);  color: var(--danger);  -webkit-text-fill-color: var(--danger); }
+.status--pending  { background: var(--warning-soft); color: var(--warning); -webkit-text-fill-color: var(--warning); }
+.role--admin      { background: var(--accent-soft);  color: var(--accent-bright); -webkit-text-fill-color: var(--accent-bright); }
+.role--user       { background: var(--surface-elevated); color: var(--text-secondary); -webkit-text-fill-color: var(--text-secondary); }
+
+/* danger 변형 버튼 — admin.css 의 .btn--danger 와 동일 */
+.btn--danger {
+    background: var(--danger-soft);
+    color: var(--danger);
+    border: 1px solid rgba(242, 93, 93, 0.35);
+    transition: all 0.18s ease;
+}
+.btn--danger:hover {
+    background: rgba(242, 93, 93, 0.22);
+    color: var(--danger);
+    border-color: var(--danger);
+    transform: translateY(-1px);
+}

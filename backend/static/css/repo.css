@@ -1,120 +1,290 @@
-/* ─── Repo 프로필 페이지 스타일 ─────────────────────── */
+/* ============================================
+   OI — repo.css (Repo 프로필 페이지)
+   ============================================ */
 
 .repo-header {
-    max-width: 1200px;
-    margin: 32px auto 24px;
+    max-width: var(--maxw);
+    margin: 8px auto 28px;
     padding: 0 24px;
+    animation: oi-fade-in 0.5s ease both;
 }
 
 .repo-header-top {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 16px;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 13px;
+    margin-bottom: 18px;
+    font-family: var(--font-mono);
+    font-size: 12.5px;
 }
 
 .repo-back {
-    color: #9A93E8 !important;
-    -webkit-text-fill-color: #9A93E8 !important;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 999px;
+    color: var(--accent-bright) !important;
+    -webkit-text-fill-color: var(--accent-bright) !important;
+    background: var(--accent-soft);
+    border: 1px solid var(--border-accent);
     text-decoration: none;
-    transition: color 0.15s;
+    transition: all 0.18s ease;
 }
 .repo-back:hover {
-    color: #B8B0FF !important;
-    -webkit-text-fill-color: #B8B0FF !important;
+    background: var(--accent-mid);
+    transform: translateX(-2px);
 }
 
 .repo-date {
-    color: #6E6E78;
-    -webkit-text-fill-color: #6E6E78;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--text-tertiary);
+    -webkit-text-fill-color: var(--text-tertiary);
+    padding: 6px 12px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+}
+
+/* Identity row — 아바타 + 타이틀 */
+.repo-identity {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+.repo-avatar {
+    flex-shrink: 0;
+    width: 72px;
+    height: 72px;
+    border-radius: 18px;
+    background: var(--gradient-accent);
+    display: grid;
+    place-items: center;
+    color: #FFF;
+    font-family: var(--font-mono);
+    font-size: 28px;
+    font-weight: 700;
+    box-shadow: 0 12px 32px rgba(127, 119, 221, 0.35),
+                inset 0 1px 0 rgba(255,255,255,0.2);
+    position: relative;
+    isolation: isolate;
+}
+.repo-avatar::after {
+    content: "";
+    position: absolute;
+    inset: -1px;
+    border-radius: inherit;
+    background: linear-gradient(180deg, rgba(255,255,255,0.25), transparent 50%);
+    pointer-events: none;
+    mix-blend-mode: overlay;
+}
+
+.repo-identity-body { flex: 1; min-width: 0; }
+.repo-eyebrow {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 999px;
+    background: var(--accent-soft);
+    color: var(--accent-bright);
+    -webkit-text-fill-color: var(--accent-bright);
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    margin-bottom: 8px;
 }
 
 .repo-title {
-    margin: 0;
-    font-size: 36px;
-    letter-spacing: -0.02em;
-    color: #F4F4F8;
-    -webkit-text-fill-color: #F4F4F8;
+    margin: 0 0 14px;
+    font-size: clamp(26px, 4vw, 38px);
+    letter-spacing: -0.025em;
+    color: var(--text-primary);
+    -webkit-text-fill-color: var(--text-primary);
+    word-break: break-all;
+    line-height: 1.1;
 }
-.repo-owner { color: #A0A0AB; -webkit-text-fill-color: #A0A0AB; font-weight: 400; }
-.repo-slash { color: #6E6E78; -webkit-text-fill-color: #6E6E78; margin: 0 4px; }
-.repo-name  { color: #F4F4F8; -webkit-text-fill-color: #F4F4F8; font-weight: 700; }
+.repo-owner {
+    color: var(--text-secondary);
+    -webkit-text-fill-color: var(--text-secondary);
+    font-weight: 400;
+}
+.repo-slash {
+    color: var(--text-quaternary);
+    -webkit-text-fill-color: var(--text-quaternary);
+    margin: 0 4px;
+    font-weight: 300;
+}
+.repo-name {
+    color: var(--text-primary);
+    font-weight: 700;
+}
+.repo-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.repo-actions .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
 
-.repo-actions {
-    margin-top: 14px;
+@media (max-width: 600px) {
+    .repo-avatar { width: 56px; height: 56px; font-size: 22px; border-radius: 14px; }
 }
 
 /* 로딩/에러 */
 .repo-loading,
 .repo-error {
-    max-width: 1200px;
+    max-width: var(--maxw);
     margin: 80px auto;
     padding: 0 24px;
     text-align: center;
-    color: #9A9AA8;
-    -webkit-text-fill-color: #9A9AA8;
+    color: var(--text-secondary);
+    -webkit-text-fill-color: var(--text-secondary);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+}
+.repo-error-icon {
+    color: var(--danger);
+    background: var(--danger-soft);
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    border: 1px solid rgba(242, 93, 93, 0.25);
 }
 
 /* 본문 */
 .repo-body {
-    max-width: 1200px;
+    max-width: var(--maxw);
     margin: 0 auto 64px;
     padding: 0 24px;
+    animation: oi-fade-in 0.4s ease both;
 }
 
 /* ─── 헤더 메트릭 4열 ─── */
 .repo-metrics-grid {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
-    gap: 16px;
+    gap: 14px;
     margin-bottom: 28px;
 }
-@media (max-width: 768px) {
-    .repo-metrics-grid { grid-template-columns: repeat(2, 1fr); }
-}
+@media (max-width: 880px) { .repo-metrics-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 480px) { .repo-metrics-grid { grid-template-columns: 1fr; } }
 
 .repo-metric {
-    background: #15151D;
-    border: 1px solid rgba(255,255,255,0.08);
-    border-radius: 12px;
+    --m-tint: var(--accent);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
     padding: 18px 20px;
+    position: relative;
+    overflow: hidden;
+    isolation: isolate;
+    transition: all 0.2s ease;
 }
+.repo-metric:hover {
+    border-color: color-mix(in srgb, var(--m-tint) 50%, transparent);
+    transform: translateY(-2px);
+}
+.repo-metric::before {
+    content: "";
+    position: absolute;
+    inset: -50% -10% auto -10%;
+    height: 70%;
+    background: radial-gradient(ellipse 60% 70% at 50% 0%, color-mix(in srgb, var(--m-tint) 18%, transparent), transparent 70%);
+    z-index: -1;
+    pointer-events: none;
+}
+.repo-metric--violet { --m-tint: #B8B0FF; }
+.repo-metric--green  { --m-tint: #88E8B0; }
+.repo-metric--amber  { --m-tint: #F0C868; }
+.repo-metric--red    { --m-tint: #FF8A8A; }
+
 .repo-metric-label {
-    font-size: 12px;
-    color: #8E8E9A;
-    -webkit-text-fill-color: #8E8E9A;
-    font-family: 'JetBrains Mono', monospace;
-    margin-bottom: 8px;
-    letter-spacing: 0.3px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 11.5px;
+    color: var(--text-tertiary);
+    -webkit-text-fill-color: var(--text-tertiary);
+    font-family: var(--font-mono);
+    margin-bottom: 12px;
+    letter-spacing: 0.4px;
+    text-transform: uppercase;
 }
-.repo-metric-value {
-    font-size: 28px;
-    font-weight: 700;
-    color: #F4F4F8;
-    -webkit-text-fill-color: #F4F4F8;
-    line-height: 1.1;
-}
-.repo-metric-value--acc { color: #F0C868; -webkit-text-fill-color: #F0C868; }
-.repo-metric-value--anom { color: #FF8A8A; -webkit-text-fill-color: #FF8A8A; }
-.repo-metric-sub {
-    margin-top: 6px;
-    font-size: 11px;
-    color: #6E6E78;
-    -webkit-text-fill-color: #6E6E78;
-    font-family: 'JetBrains Mono', monospace;
+.repo-metric-label svg {
+    width: 14px;
+    height: 14px;
+    color: var(--m-tint);
+    flex-shrink: 0;
 }
 
-/* ─── 차트 카드 (공통) ─── */
+.repo-metric-value {
+    font-family: var(--font-mono);
+    font-size: 30px;
+    font-weight: 700;
+    color: var(--text-primary);
+    -webkit-text-fill-color: var(--text-primary);
+    line-height: 1;
+    letter-spacing: -0.02em;
+}
+.repo-metric-value--acc {
+    color: #F0C868;
+    -webkit-text-fill-color: #F0C868;
+}
+.repo-metric-value--anom {
+    color: #FF8A8A;
+    -webkit-text-fill-color: #FF8A8A;
+}
+.repo-metric-sub {
+    margin-top: 6px;
+    font-size: 11.5px;
+    color: var(--text-tertiary);
+    -webkit-text-fill-color: var(--text-tertiary);
+    font-family: var(--font-mono);
+}
+
+/* ─── 차트/카드 공통 ─── */
 .repo-chart-card,
 .repo-types-card,
 .repo-insight-card {
-    background: #15151D;
-    border: 1px solid rgba(255,255,255,0.08);
-    border-radius: 14px;
-    padding: 24px 28px;
-    margin-bottom: 20px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 22px 24px;
+    margin-bottom: 18px;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.2s ease;
+}
+.repo-chart-card::before,
+.repo-types-card::before,
+.repo-insight-card::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--accent-bright), transparent);
+    opacity: 0.4;
+}
+.repo-chart-card:hover,
+.repo-types-card:hover,
+.repo-insight-card:hover { border-color: var(--border-strong); }
+
+/* 2-up grid (이벤트 타입 + 인사이트) */
+.repo-grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 18px;
+}
+.repo-grid-2 > * { margin-bottom: 0; }
+@media (max-width: 960px) {
+    .repo-grid-2 { grid-template-columns: 1fr; }
 }
 
 .repo-chart-header {
@@ -127,16 +297,31 @@
 }
 .repo-chart-header h2 {
     margin: 0;
-    font-size: 18px;
-    color: #F4F4F8;
-    -webkit-text-fill-color: #F4F4F8;
-    letter-spacing: -0.02em;
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--text-primary);
+    -webkit-text-fill-color: var(--text-primary);
+    letter-spacing: -0.01em;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
 }
+.repo-section-icon {
+    display: inline-grid;
+    place-items: center;
+    width: 26px;
+    height: 26px;
+    border-radius: 7px;
+    background: var(--accent-soft);
+    color: var(--accent-bright);
+    border: 1px solid var(--border-accent);
+}
+.repo-section-icon svg { width: 14px; height: 14px; }
 .repo-chart-sub {
-    font-size: 12px;
-    color: #8E8E9A;
-    -webkit-text-fill-color: #8E8E9A;
-    font-family: 'JetBrains Mono', monospace;
+    font-size: 11.5px;
+    color: var(--text-tertiary);
+    -webkit-text-fill-color: var(--text-tertiary);
+    font-family: var(--font-mono);
 }
 
 .repo-chart-wrap {
@@ -148,11 +333,11 @@
 .repo-types-grid {
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 14px;
 }
 .type-row {
     display: grid;
-    grid-template-columns: 100px 1fr 80px 60px;
+    grid-template-columns: 100px 1fr 70px 50px;
     align-items: center;
     gap: 12px;
     font-size: 13px;
@@ -160,73 +345,105 @@
 .type-row-label {
     display: flex;
     align-items: center;
-    gap: 8px;
-    color: #D8D8E0;
-    -webkit-text-fill-color: #D8D8E0;
+    gap: 9px;
+    color: var(--text-primary);
+    -webkit-text-fill-color: var(--text-primary);
+    font-weight: 500;
 }
-.type-dot {
-    display: inline-block;
-    width: 10px;
-    height: 10px;
-    border-radius: 50%;
+.type-icon {
+    display: inline-grid;
+    place-items: center;
+    width: 22px;
+    height: 22px;
+    border-radius: 6px;
+    border: 1px solid;
+    flex-shrink: 0;
 }
 .type-row-bar {
-    background: rgba(255,255,255,0.05);
-    height: 8px;
-    border-radius: 4px;
+    background: rgba(255,255,255,0.04);
+    height: 6px;
+    border-radius: 999px;
     overflow: hidden;
+    position: relative;
 }
 .type-row-fill {
     height: 100%;
-    border-radius: 4px;
-    transition: width 0.4s ease-out;
+    border-radius: 999px;
+    transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
 }
 .type-row-count {
-    font-family: 'JetBrains Mono', monospace;
-    color: #E0E0E8;
-    -webkit-text-fill-color: #E0E0E8;
+    font-family: var(--font-mono);
+    color: var(--text-primary);
+    -webkit-text-fill-color: var(--text-primary);
     text-align: right;
+    font-size: 12.5px;
+    font-weight: 600;
 }
 .type-row-pct {
-    font-family: 'JetBrains Mono', monospace;
-    color: #8E8E9A;
-    -webkit-text-fill-color: #8E8E9A;
+    font-family: var(--font-mono);
+    color: var(--text-tertiary);
+    -webkit-text-fill-color: var(--text-tertiary);
     text-align: right;
-    font-size: 12px;
+    font-size: 11.5px;
+}
+@media (max-width: 480px) {
+    .type-row { grid-template-columns: 80px 1fr 60px; }
+    .type-row-pct { display: none; }
 }
 
-/* ─── 인사이트 섹션 ─── */
+/* ─── 인사이트 본문 ─── */
 .repo-insight-body {
-    color: #D8D8E0;
-    -webkit-text-fill-color: #D8D8E0;
+    color: var(--text-primary);
+    -webkit-text-fill-color: var(--text-primary);
     line-height: 1.7;
+    font-size: 14px;
 }
-.repo-insight-body h4,
+.repo-insight-body h2,
 .repo-insight-body h3,
-.repo-insight-body h2 {
-    color: #F4F4F8 !important;
-    -webkit-text-fill-color: #F4F4F8 !important;
-    margin-top: 18px;
+.repo-insight-body h4 {
+    color: var(--text-primary) !important;
+    -webkit-text-fill-color: var(--text-primary) !important;
+    margin-top: 20px;
     margin-bottom: 10px;
+    letter-spacing: -0.01em;
+    font-weight: 600;
+    font-size: 15px;
+}
+.repo-insight-body h4 {
+    color: var(--accent-bright) !important;
+    -webkit-text-fill-color: var(--accent-bright) !important;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--border);
 }
 .repo-insight-body p,
 .repo-insight-body li {
-    color: #D8D8E0 !important;
-    -webkit-text-fill-color: #D8D8E0 !important;
+    color: var(--text-secondary) !important;
+    -webkit-text-fill-color: var(--text-secondary) !important;
 }
 .repo-insight-body a {
-    color: #B8B0FF !important;
-    -webkit-text-fill-color: #B8B0FF !important;
+    color: var(--accent-bright) !important;
+    -webkit-text-fill-color: var(--accent-bright) !important;
+    border-bottom: 1px dashed transparent;
+    transition: border-color 0.15s;
 }
+.repo-insight-body a:hover { border-bottom-color: var(--accent-bright); }
 .repo-insight-body strong {
-    color: #F4F4F8;
-    -webkit-text-fill-color: #F4F4F8;
+    color: var(--text-primary);
+    -webkit-text-fill-color: var(--text-primary);
 }
 .repo-insight-body code {
-    background: rgba(154,147,232,0.15);
-    color: #B8B0FF;
-    -webkit-text-fill-color: #B8B0FF;
-    padding: 2px 6px;
-    border-radius: 4px;
+    background: var(--accent-soft);
+    color: var(--accent-bright);
+    -webkit-text-fill-color: var(--accent-bright);
+    padding: 2px 7px;
+    border-radius: 5px;
     font-size: 12px;
+    border: 1px solid var(--border-accent);
+}
+.repo-insight-body blockquote {
+    border-left: 3px solid var(--accent);
+    padding: 0.5rem 1rem;
+    background: var(--accent-soft);
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+    margin: 1rem 0;
 }

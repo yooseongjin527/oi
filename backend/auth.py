@@ -167,10 +167,8 @@ def require_approved_user_page(
     if not user:
         raise RedirectException("/login")
 
-    if user.status == UserStatus.pending:
-        raise RedirectException("/pending")
+    # pending / rejected 모두 안내 페이지로 — 거기서 설정·탈퇴 가능
     if user.status != UserStatus.approved:
-        # rejected 등 — 보안상 자세한 안내 없이 로그인 페이지로
-        raise RedirectException("/login")
+        raise RedirectException("/pending")
 
     return user
