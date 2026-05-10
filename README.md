@@ -261,23 +261,19 @@ bash scripts/run_validation_queries.sh 2026-04-29
 
 ## EC2 배포
 
+빠른 명령 요약 (이미 인프라 구축 완료 후):
 ```bash
-# EC2 SSH 접속 후 (1회만)
-git clone https://github.com/<owner>/oi.git ~/oi
-cd ~/oi
-cp .env.example .env && nano .env
-
-# 일반 배포
+# EC2 SSH 접속 후 일반 배포
 ~/oi/scripts/deploy.sh
 
-# 최초 배포 시: Athena DDL 도 같이 적용
+# 최초 배포 또는 새 DDL 추가 시
 ~/oi/scripts/deploy.sh --bootstrap
 
 # 코드만 변경 (이미지 재빌드 스킵)
 ~/oi/scripts/deploy.sh --no-build
 ```
 
-상세는 본 README 의 [EC2 배포 가이드](#ec2-배포-가이드-처음부터-끝까지) 섹션 참조.
+처음부터 셋업하는 풀 가이드는 본 README 의 [EC2 + DuckDNS 배포 가이드](#ec2--duckdns-배포-가이드-처음부터-끝까지) 섹션 참조.
 
 ---
 
@@ -366,9 +362,459 @@ cp .env.example .env && nano .env
 
 ---
 
-## EC2 배포 가이드 (처음부터 끝까지)
+## EC2 + DuckDNS 배포 가이드 (처음부터 끝까지)
 
-(다음 섹션의 "EC2 빠른 배포" 가이드 참조)
+> 운영 형태: **단일 EC2 t3.medium + Nginx reverse proxy + DuckDNS 무료 도메인 + Let's Encrypt HTTPS**
+> 비용 합산 (17일 운영 기준): 약 **$30** (도메인·CDN·LB 모두 $0)
+
+### 아키텍처
+
+```
+[인터넷]
+   │
+   ▼  HTTPS 443 (Let's Encrypt 인증서, 90일 자동 갱신)
+[EC2 oi-prod]  (Public subnet, Elastic IP)
+   │
+   ├─ Nginx 80/443  ← reverse proxy + HTTPS termination
+   │     │
+   │     ▼
+   ├─ FastAPI 8000        (사용자 대시보드, SG 차단)
+   ├─ Streamlit 8501      ┐
+   ├─ Airflow 8090        ├─ My IP 만 직접 접근 (운영자)
+   └─ Redpanda Console 8088 ┘
+
+DuckDNS DNS  ─────────┐
+                      ▼
+oi-prod.duckdns.org → <EC2_Elastic_IP>
+```
+
+### 사전 준비 (AWS Console 한 번 셋업)
+
+핸드오프 §3.3 의 인프라 그대로:
+- VPC `oi-vpc` (10.0.0.0/16, public subnet 2-AZ, S3 Gateway Endpoint)
+- IAM Role `oi-ec2-role` (`S3FullAccess`, `AthenaFullAccess`, `GlueFullAccess`, `BedrockFullAccess`, **+ `s3:ListBucket` on bucket**)
+- Security Group `oi-sg` 인바운드:
+  - 22 (SSH): My IP
+  - **80, 443 (HTTP/HTTPS): 0.0.0.0/0**  ← 외부 공개
+  - 8090 (Airflow), 8501 (Streamlit), 8088 (Redpanda): My IP
+  - 8000 은 **열지 않음** (Nginx 만 localhost 로 접근)
+- S3 버킷 `oi-data-lake-{suffix}`
+- Bedrock Console → Model access → Claude Haiku 4.5 활성화
+
+---
+
+### Step 1 — 코드 GitHub push
+
+Local WSL 에서:
+```bash
+cd ~/projects/oi
+git add -A
+git commit -m "Ready for production deployment"
+git push
+```
+
+---
+
+### Step 2 — EC2 인스턴스 생성
+
+AWS Console → EC2 → Launch instance:
+
+| 항목 | 값 |
+|---|---|
+| Name | `oi-prod` |
+| AMI | Ubuntu Server 24.04 LTS (x86_64) |
+| Instance type | **t3.medium** (4GB RAM 필수) |
+| Key pair | 새로 생성 → `oi-key.pem` 다운로드 |
+| VPC | `oi-vpc` |
+| Subnet | `oi-public-2a` |
+| Auto-assign public IP | Enable |
+| Security group | `oi-sg` (기존) |
+| Storage | 30 GB gp3 |
+| IAM instance profile | `oi-ec2-role` |
+
+Launch → Running 확인.
+
+**Elastic IP** 할당 (재부팅해도 IP 안 바뀌게):
+- EC2 → Elastic IPs → Allocate → Associate to `oi-prod`
+- 그 IP 가 `<EC2_IP>` (이후 `dig` / DuckDNS 입력에 사용)
+
+---
+
+### Step 3 — EC2 시스템 셋업
+
+WSL Ubuntu 에서:
+```bash
+chmod 400 ~/Downloads/oi-key.pem
+ssh -i ~/Downloads/oi-key.pem ubuntu@<EC2_IP>
+```
+
+EC2 안에서:
+```bash
+# Docker + Compose v2 + AWS CLI v2
+sudo apt update && sudo apt upgrade -y
+curl -fsSL https://get.docker.com | sudo sh
+sudo usermod -aG docker $USER
+sudo apt install -y unzip nginx certbot python3-certbot-nginx
+curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+unzip awscliv2.zip && sudo ./aws/install && rm -rf aws awscliv2.zip
+
+# Swap 2GB (t3.medium 메모리 보호)
+sudo fallocate -l 2G /swapfile
+sudo chmod 600 /swapfile
+sudo mkswap /swapfile && sudo swapon /swapfile
+echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
+
+# Group 적용 위해 재로그인
+exit
+ssh -i ~/Downloads/oi-key.pem ubuntu@<EC2_IP>
+
+# 검증
+docker --version
+aws --version
+nginx -v
+certbot --version
+free -h     # swap 2GB 보여야 함
+```
+
+---
+
+### Step 4 — GitHub 코드 EC2 로
+
+```bash
+# EC2 에 SSH key 생성
+ssh-keygen -t ed25519 -C "oi-ec2" -f ~/.ssh/id_ed25519 -N ""
+cat ~/.ssh/id_ed25519.pub
+# 출력 복사
+```
+
+GitHub:
+- Repo `oi` → Settings → Deploy keys → **Add deploy key**
+- Title: `oi-prod-ec2`, Key: 위 복사한 공개키, **Allow write access OFF** (read-only)
+
+EC2:
+```bash
+cd ~
+git clone git@github.com:<owner>/oi.git
+cd ~/oi
+```
+
+---
+
+### Step 5 — `.env` 작성
+
+```bash
+cd ~/oi
+cp .env.example .env
+nano .env
+```
+
+핵심 값 (강력한 비밀번호 / 키 생성):
+```bash
+# AWS — IAM Role 사용하므로 Access Key 비워둠 (boto3 IMDS 자동)
+AWS_REGION=ap-northeast-2
+AWS_DEFAULT_REGION=ap-northeast-2
+AWS_S3_BUCKET=oi-data-lake-XXXX           # 본인 버킷명
+AWS_ACCESS_KEY_ID=                         # 비워둠
+AWS_SECRET_ACCESS_KEY=
+
+# 보안 (반드시 새로 생성)
+JWT_SECRET_KEY=$(openssl rand -hex 32)
+ADMIN_PASSWORD=<강력한 비밀번호>
+AIRFLOW_FERNET_KEY=$(python3 -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())")
+AIRFLOW_ADMIN_PASSWORD=<강력한 비밀번호>
+
+# GitHub PAT (collector rate limit 5000/h 위해)
+GITHUB_TOKEN=ghp_xxxxx
+
+# Bedrock
+OI_BEDROCK_REGION=ap-northeast-2
+OI_BEDROCK_MODEL_ID=global.anthropic.claude-haiku-4-5-20251001-v1:0
+
+# 나머지 기본값 그대로
+POSTGRES_USER=oi
+POSTGRES_PASSWORD=<강력한 비밀번호>
+POSTGRES_DB=oi
+POSTGRES_HOST=postgres
+POSTGRES_PORT=5432
+OI_ATHENA_WORKGROUP=oi-workgroup
+OI_ATHENA_OUTPUT=s3://${AWS_S3_BUCKET}/athena-results/
+OI_GLUE_DATABASE=oi
+OI_OPENSEARCH_HOST=http://opensearch:9200
+KAFKA_BOOTSTRAP_SERVERS=redpanda:9092
+KAFKA_TOPIC_LIVE=gh.events.live
+
+# 운영자 콘솔 IP 화이트리스트 (My IP)
+ADMIN_IP_WHITELIST=<your.public.ip.addr>
+```
+
+`openssl rand` / `Fernet.generate_key()` 출력을 직접 복사해서 채우세요.
+
+---
+
+### Step 6 — Athena bootstrap + 컨테이너 기동
+
+```bash
+cd ~/oi
+set -a && source .env && set +a
+
+# Athena 인프라 (Glue DB + Workgroup + 모든 DDL — 멱등)
+python3 scripts/bootstrap_athena.py
+
+# Docker 컨테이너 빌드 + 기동
+docker compose up -d --build
+
+# 헬스체크 (~1-2분 대기)
+sleep 90
+docker compose ps
+curl -fsS http://localhost:8000/health
+# {"status":"ok"}
+
+# 초기 admin 계정 (1회만, 멱등)
+docker compose exec fastapi python init_admin.py
+```
+
+---
+
+### Step 7 — 모든 DAG unpause + 첫 데이터 적재
+
+```bash
+docker compose exec airflow-scheduler bash -c '
+  airflow dags unpause gharchive_to_bronze
+  airflow dags unpause bronze_to_silver
+  airflow dags unpause silver_to_gold
+  airflow dags unpause silver_to_gold_hourly
+  airflow dags unpause categorize_daily
+'
+
+# 어제 분 silver/gold 즉시 빌드 (사용자한테 보여주려고)
+YESTERDAY=$(date -u -d '1 day ago' +%Y-%m-%d)
+docker compose exec airflow-scheduler airflow dags backfill bronze_to_silver \
+    --start-date ${YESTERDAY}T00:30:00 --end-date ${YESTERDAY}T00:30:00 \
+    --reset-dagruns --yes
+
+# bronze_to_silver 끝나면 (~3-5분):
+docker compose exec airflow-scheduler airflow dags backfill silver_to_gold \
+    --start-date ${YESTERDAY}T01:00:00 --end-date ${YESTERDAY}T01:00:00 \
+    --reset-dagruns --yes
+```
+
+---
+
+### Step 8 — DuckDNS 무료 도메인 발급
+
+1. https://www.duckdns.org 접속 → **GitHub 또는 Google 로그인**
+2. 페이지 상단의 `domain` 입력란에 원하는 이름 입력 (예: `oi-prod`) → **add domain**
+3. **token** 메모: `xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx`
+4. 추가된 `oi-prod.duckdns.org` 옆 **current ip** 칸에 EC2 Elastic IP 입력 → **update ip**
+
+검증 (전파 ~1분):
+```bash
+dig oi-prod.duckdns.org +short
+# 출력: <EC2_IP> 가 떠야 정상
+```
+
+#### (선택) IP 자동 갱신 cron — Elastic IP 사용하면 불필요
+EIP 가 고정이라 안 해도 됨. 만약 향후 IP 바뀔 가능성 대비:
+```bash
+mkdir -p ~/duckdns
+cat > ~/duckdns/duck.sh <<'EOF'
+#!/bin/bash
+TOKEN="여기에_토큰"
+DOMAIN="oi-prod"
+echo url="https://www.duckdns.org/update?domains=${DOMAIN}&token=${TOKEN}&ip=" \
+  | curl -k -o ~/duckdns/duck.log -K -
+EOF
+chmod +x ~/duckdns/duck.sh
+(crontab -l 2>/dev/null; echo "*/5 * * * * ~/duckdns/duck.sh >/dev/null 2>&1") | crontab -
+```
+
+---
+
+### Step 9 — Nginx reverse proxy 설정
+
+```bash
+sudo tee /etc/nginx/sites-available/oi <<'EOF'
+server {
+    listen 80;
+    server_name oi-prod.duckdns.org;
+
+    # Let's Encrypt HTTP-01 challenge 가 사용 (Step 10)
+    location /.well-known/acme-challenge/ {
+        root /var/www/html;
+    }
+
+    location / {
+        proxy_pass http://localhost:8000;
+        proxy_set_header Host              $host;
+        proxy_set_header X-Real-IP         $remote_addr;
+        proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        # Bedrock 호출 등 긴 응답 (~10s) 안전장치
+        proxy_read_timeout 60s;
+        proxy_send_timeout 60s;
+
+        # 큰 파일 업로드 안 쓰지만 안전 마진
+        client_max_body_size 5m;
+    }
+}
+EOF
+
+sudo ln -sf /etc/nginx/sites-available/oi /etc/nginx/sites-enabled/
+sudo rm -f /etc/nginx/sites-enabled/default
+sudo nginx -t && sudo systemctl reload nginx
+
+# HTTP 검증 (HTTPS 전)
+curl -I http://oi-prod.duckdns.org/health
+# HTTP/1.1 200 OK
+```
+
+---
+
+### Step 10 — Let's Encrypt HTTPS 인증서 발급
+
+```bash
+sudo certbot --nginx -d oi-prod.duckdns.org \
+    --non-interactive --agree-tos -m your_email@example.com \
+    --redirect
+```
+- `--redirect`: 80 → 443 자동 redirect 룰 추가
+- 90일마다 자동 갱신 (`systemd timer` 등록됨)
+
+검증:
+```bash
+curl -I https://oi-prod.duckdns.org/health
+# HTTP/2 200
+# server: nginx/...
+
+# HTTP → HTTPS redirect 확인
+curl -I http://oi-prod.duckdns.org
+# HTTP/1.1 301 Moved Permanently
+# Location: https://oi-prod.duckdns.org/
+```
+
+자동 갱신 동작 확인:
+```bash
+sudo systemctl status certbot.timer
+sudo certbot renew --dry-run
+# Congratulations, all simulated renewals succeeded
+```
+
+---
+
+### Step 11 — Security Group 정리 (8000 직접 접근 차단)
+
+EC2 → Security Groups → `oi-sg` → Edit inbound rules:
+
+| Type | Protocol | Port | Source | 용도 |
+|---|---|---|---|---|
+| SSH | TCP | 22 | My IP | 관리자 SSH |
+| HTTP | TCP | 80 | 0.0.0.0/0 | Nginx (Let's Encrypt + redirect) |
+| HTTPS | TCP | 443 | 0.0.0.0/0 | Nginx HTTPS |
+| Custom TCP | TCP | 8090 | My IP | Airflow UI |
+| Custom TCP | TCP | 8501 | My IP | Streamlit |
+| Custom TCP | TCP | 8088 | My IP | Redpanda Console |
+
+**8000 은 인바운드 룰에 없어야 함** (Nginx 가 localhost 로 접근하니 외부에 노출 X).
+
+다른 IP 에서 직접 접근 차단 검증 (Mobile network 같은 다른 네트워크):
+```
+http://<EC2_IP>:8000   → timeout (정상)
+https://oi-prod.duckdns.org → 200 OK (정상)
+```
+
+---
+
+### Step 12 — 외부 접속 + 동작 검증
+
+브라우저:
+```
+https://oi-prod.duckdns.org
+```
+- 자물쇠 ✅
+- 메인페이지 정상 렌더링
+- 회원가입 → 다른 브라우저로 admin 로그인 (`admin` / `ADMIN_PASSWORD`) → /admin 에서 승인 → 일반 로그인 → /dashboard
+
+---
+
+### Step 13 — `deploy.sh` 자동 배포 흐름
+
+코드 수정 → push → EC2 에서:
+```bash
+cd ~/oi
+~/oi/scripts/deploy.sh           # 일반 배포 (git pull + docker rebuild + healthcheck)
+~/oi/scripts/deploy.sh --no-build # 코드만 (이미지 재빌드 X, 빠름)
+~/oi/scripts/deploy.sh --bootstrap # 새 DDL 추가 시
+```
+
+---
+
+### Step 14 — 비용 모니터링 + 절약
+
+**비용 모니터링**:
+- AWS Cost Explorer 매일 확인 (EC2, Athena, Bedrock, S3)
+- Billing → Budgets → **$40 cap 알림** 설정
+
+**프로젝트 종료 후 정리**:
+```bash
+# EC2 terminate
+aws ec2 terminate-instances --instance-ids <i-xxxxx>
+
+# Elastic IP release
+aws ec2 release-address --allocation-id <eipalloc-xxxxx>
+
+# S3 데이터 정리 (필요 시)
+aws s3 rm s3://${AWS_S3_BUCKET} --recursive
+aws s3 rb s3://${AWS_S3_BUCKET}
+
+# DuckDNS 도메인은 자동 무료 유지 (정리 불필요, 또는 duckdns.org 에서 delete)
+```
+
+---
+
+### 종합 체크리스트 — 배포 후 1시간 내
+
+- [ ] `https://oi-prod.duckdns.org` 자물쇠 ✅ + 메인페이지
+- [ ] `http://oi-prod.duckdns.org` → 301 redirect → HTTPS
+- [ ] 회원가입 → admin 승인 → /dashboard 접근
+- [ ] LIVE PULSE 카드에 events/min 차오름 (collector 동작)
+- [ ] `aws s3 ls s3://${AWS_S3_BUCKET}/bronze/live/year=$(date -u +%Y)/` 채워짐
+- [ ] `aws s3 ls s3://${AWS_S3_BUCKET}/bronze/archive/year=$(date -u +%Y)/` 채워짐
+- [ ] 어제 silver/gold partition 채워짐 (Step 7 의 backfill 결과)
+- [ ] 대시보드에 어제 인사이트 + 가속도 Top 10 + 분야별 카테고리 정상 표시
+- [ ] Repo 카드 클릭 → 상세 페이지 → 그날 단독 인사이트 + 24h 시계열
+- [ ] EC2 8000 직접 접근 (다른 IP) → timeout (SG 차단 정상)
+- [ ] Airflow UI (`http://<EC2_IP>:8090`) → My IP 만 접근
+
+---
+
+### 비용 정리 (실측)
+
+t3.medium 24/7 + DuckDNS 무료 + Let's Encrypt 무료:
+
+| 운영 일수 | EC2+EBS | Athena | S3 | Bedrock | 도메인 | **합계** |
+|---|---|---|---|---|---|---|
+| 11일 (개발만) | $11.9 | $4.7 | $1.5 | $0.2 | **$0** | **$18.3** |
+| 14일 (+발표 3일) | $15.1 | $6.0 | $2.5 | $0.3 | **$0** | **$23.9** |
+| 17일 (+발표 1주) | $18.4 | $7.3 | $3.8 | $0.4 | **$0** | **$29.9** |
+| 21일 | $22.7 | $9.0 | $5.0 | $0.4 | **$0** | **$37.1** |
+
+→ **23일 운영까지 $40 cap 안에서 가능** ✅
+
+---
+
+### 흔한 함정
+
+| 증상 | 해결 |
+|---|---|
+| `certbot` 가 challenge 실패 | DNS 전파 미완. `dig oi-prod.duckdns.org` 가 EC2 IP 가리키는지 + SG 의 80 포트 0.0.0.0/0 확인 |
+| `502 Bad Gateway` | docker compose 가 healthy 아님. `docker compose ps` + `curl http://localhost:8000/health` |
+| `400 Bad Request` 또는 무한 redirect | uvicorn `--proxy-headers` 옵션 누락. backend/Dockerfile 확인 후 rebuild |
+| Nginx reload 후도 옛 설정 | `sudo nginx -t` 로 syntax check, `sudo systemctl restart nginx` |
+| Bedrock `AccessDenied` | IAM Role 에 `BedrockFullAccess` + Bedrock Console 모델 액세스 활성화 |
+| `gharchive_to_bronze` 403 | EC2 IAM Role 에 `s3:ListBucket` 추가 (또는 코드 fallback 자동 처리됨) |
+| 메모리 부족 OOM | `free -h` 로 swap 확인. opensearch heap 줄이기 (`OPENSEARCH_JAVA_OPTS=-Xms256m -Xmx256m`) |
+| HTTPS 인증서 만료 알림 | certbot timer 확인: `sudo systemctl list-timers \| grep certbot` |
 
 ---
 

@@ -24,5 +24,12 @@ COPY . .
 
 EXPOSE 8000
 
-# uvicorn 실행 (개발 모드: --reload)
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+# uvicorn 실행
+# - --reload: 개발 편의 (운영에서도 부담 적어서 그대로). 부하 더 줄이고 싶으면 빼세요.
+# - --proxy-headers --forwarded-allow-ips=*: ALB 같은 reverse proxy 뒤에서
+#   X-Forwarded-Proto / X-Forwarded-For 를 신뢰. 이게 있어야 request.url.scheme 이
+#   "https" 로 잡혀 쿠키 secure 판단/리다이렉트가 정상 동작.
+CMD ["uvicorn", "main:app", \
+     "--host", "0.0.0.0", "--port", "8000", \
+     "--proxy-headers", "--forwarded-allow-ips=*", \
+     "--reload"]
