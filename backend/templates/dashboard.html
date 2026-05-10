@@ -16,7 +16,7 @@
             </div>
             <h1><span>{{ user.username }}</span>님, 환영합니다.</h1>
             <p class="dashboard-sub">
-                대시보드는 위에서 아래로 <strong>세 가지 시점의 GitHub 활동</strong>을 함께 보여드립니다.
+                대시보드는 위에서 아래로 <strong>세 가지 시점의 GitHub 오픈소스 프로젝트 활동</strong>을 함께 보여드립니다.
             </p>
             <ul class="dashboard-sub-list">
                 <li>
@@ -29,12 +29,12 @@
                     <span class="dashboard-sub-tag dashboard-sub-tag--hourly">② 시간 단위 · 오늘</span>
                     <strong>오늘 0시(한국시간)부터 지금까지</strong>의 시간대별 활동량입니다.
                     매시간 새로 정리되며 각 시간대는 약 <strong>2~3시간 뒤</strong>에 표시됩니다.
-                    GitHub 전체 활동을 빠짐없이 모은 <strong>풀 커버리지</strong> 데이터입니다.
+                    GitHub 오픈소스 전체 활동을 빠짐없이 모은 <strong>풀 커버리지</strong> 데이터입니다.
                 </li>
                 <li>
                     <span class="dashboard-sub-tag dashboard-sub-tag--daily">③ 일 단위 · 어제 종합</span>
                     <strong>어제 하루(한국시간 어제 09시 ~ 오늘 08시 59분)</strong>의 활동을 분석한
-                    <em>급상승 · 갑작스런 인기 · 분야별 트렌드 · AI 요약</em>입니다.
+                    <em>급상승 · 갑작스런 인기 · 분야별 트랜드 · AI 요약</em>입니다.
                     매일 <strong>오전 10시(한국시간)</strong>에 자동 갱신되며 역시 <strong>풀 커버리지</strong>입니다.
                 </li>
             </ul>
@@ -48,7 +48,7 @@
         <div class="live-pulse-head">
             <div class="live-pulse-title">
                 <span class="live-dot"></span>
-                <span>지금 GitHub에서</span>
+                <span>분 단위 분석</span>
                 <span class="live-pulse-meta" id="live-pulse-meta">연결 대기…</span>
             </div>
             <div class="live-pulse-window">최근 1시간 · 1분 단위 집계</div>
@@ -90,7 +90,7 @@
     <div class="today-hourly-inner">
         <div class="today-hourly-head">
             <div class="today-hourly-title">
-                <span class="today-hourly-title-text">오늘 시간대별 진행</span>
+                <span class="today-hourly-title-text">시간 단위 분석</span>
                 <span class="today-hourly-meta" id="today-hourly-meta">불러오는 중…</span>
             </div>
             <div class="today-hourly-source">한국시간 기준 · 매시간 새로 정리</div>
@@ -169,7 +169,7 @@
                 <span class="insights-title-icon">
                     <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.5c-1.1 4-3.6 5.7-3.6 9.3 0 2 1.6 3.6 3.6 3.6s3.6-1.6 3.6-3.6c0-3.6-2.5-5.3-3.6-9.3zM7 16c0 2.5 2 5 5 5s5-2.5 5-5c0 0-2 1.5-5 1.5S7 16 7 16z"/></svg>
                 </span>
-                GitHub 트렌드 분석
+                일 단위 분석
             </h2>
             <span class="insights-date" id="insights-date"></span>
         </div>
@@ -198,7 +198,7 @@
     <!-- 로딩 (skeleton) -->
     <div class="insights-loading" id="insights-loading">
         <div class="loading-spinner"></div>
-        <p>AI가 오늘의 트렌드를 정리하고 있습니다…</p>
+        <p>AI가 오늘의 트랜드를 정리하고 있습니다…</p>
     </div>
 
     <!-- 에러 -->
