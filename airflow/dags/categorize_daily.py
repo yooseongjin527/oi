@@ -143,7 +143,10 @@ def _extract_excerpt(insight_md: str | None, repo_name: str, max_chars: int = 80
 @dag(
     dag_id="categorize_daily",
     start_date=datetime(2026, 4, 27, tzinfo=timezone.utc),
-    schedule="0 4 * * *",           # silver_to_gold(03:00) 후 1시간 lag
+    # 02:00 UTC = KST 11:00. silver_to_gold(KST 10:00) 후 1시간 lag.
+    # 사용자가 들어가면 insights_service 가 inline batch 분류로 즉시 카테고리 채워줌.
+    # 이 DAG 는 사용자 안 들어간 날짜의 backup 분류 역할.
+    schedule="0 2 * * *",
     catchup=False,                  # 카테고리는 과거분 backfill 가치 낮음 + Bedrock 비용
     max_active_runs=1,
     default_args={"owner": "jin", "retries": 1, "retry_delay": timedelta(minutes=3)},

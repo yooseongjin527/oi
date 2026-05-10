@@ -50,6 +50,7 @@ DDL_FILES = [
     "gold_repo_hourly.sql",
     "gold_language_activity.sql",
     "gold_repo_enriched.sql",
+    "gold_hourly_recent.sql",   # hourly trigger 적재용 (silver_to_gold_hourly)
 ]
 
 

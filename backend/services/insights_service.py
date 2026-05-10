@@ -158,7 +158,15 @@ def get_daily_insights(date: str) -> dict:
     if not rows:
         return {
             "date": date,
-            "insight_markdown": f"### {date} 데이터 없음\n\n해당 날짜의 Gold 마트 데이터가 없습니다.",
+            "insight_markdown": (
+                f"### {date} 분석 결과가 아직 준비되지 않았습니다\n\n"
+                "이 날짜의 일별 종합 분석은 아직 만들어지지 않았어요.\n\n"
+                "- **언제 보이나요?** 일별 분석은 **한국시간 매일 오전 10시**에 어제 자료 기준으로 자동 갱신됩니다. "
+                "오늘 날짜(한국시간 기준)를 선택했다면 내일 오전 10시 이후에 확인할 수 있어요.\n"
+                "- **어제·그제 등 과거 날짜인데 비어있다면?** 데이터 수집이나 집계 과정에서 일시적으로 누락됐을 수 있습니다. "
+                "잠시 후 다시 시도해 주세요.\n"
+                "- 지금 진행 중인 활동이 궁금하다면 상단의 **실시간 GitHub 활동** 과 **오늘 시간대별 진행** 카드에서 바로 확인할 수 있어요."
+            ),
             "data_basis": [],
             "bedrock_meta": {},
         }
@@ -183,11 +191,36 @@ def get_daily_insights(date: str) -> dict:
 
     insight_md = result["text"]
 
-    # Step 4: F5 카테고리 머지 (best-effort)
-    # - rows 에 in-place 로 category, category_confidence 필드 추가
-    # - 분류 전이면 category=None — UI 에서 "Other" 그룹으로 자동 fallback
-    # - 인덱싱(Step 5) 보다 먼저 실행 — 응답에 category 가 들어가야 하므로
+    # Step 4: F5 카테고리 머지 (OpenSearch 에 이미 분류된 결과가 있으면 채움)
     _merge_categories(rows, date)
+
+    # Step 4.5: 카테고리 미분류 row 가 있으면 inline batch 분류 (단일 Bedrock 호출)
+    # - 같은 호출에서 만든 인사이트 마크다운을 컨텍스트로 같이 넣음 → 정확도 ↑
+    # - 직렬 10× 호출 (~10-20초) 대신 1× 호출 (~3-5초) 로 응답 시간 보호
+    # - OpenSearch 에 카테고리 색인이 비어있는 첫 진입에서 사용자가 즉시 카테고리 보게 함
+    # - categorize_daily DAG 는 backup 으로 유지 (다른 사용자가 안 본 날짜 채워줌)
+    _missing = [r for r in rows if not r.get("category")]
+    if _missing:
+        try:
+            from services import category_service
+            results = category_service.classify_repos_batch(_missing, insight_md, date)
+            result_map = {res["repo_name"]: res for res in results if res.get("repo_name")}
+            for row in rows:
+                if row.get("category"):
+                    continue
+                m = result_map.get(row.get("repo_name"))
+                if m:
+                    row["category"] = m["category"]
+                    row["category_confidence"] = m["confidence"]
+                    row["category_reasoning"] = m["reasoning"]
+            logger.info(
+                "insights.batch_classify filled=%d/%d (missing was %d)",
+                sum(1 for r in rows if r.get("category")),
+                len(rows), len(_missing),
+            )
+        except Exception as e:
+            logger.warning("insights.batch_classify failed (non-fatal): %s", e)
+            # 실패해도 row.category 는 None 으로 남음 → UI 에서 "Other" 로 fallback
 
     # Step 5: OpenSearch 인덱싱 (best-effort)
     # - 메인 페이지 진입 → 인사이트 생성 → 자동 색인 → 검색 페이지에서 즉시 조회 가능

@@ -175,6 +175,104 @@ def classify_repo(
     return parsed
 
 
+# ─── Top-N 일괄 분류 (단일 Bedrock 호출) ───────────────
+
+def _parse_batch_response(text: str) -> list[dict[str, Any]]:
+    """Bedrock 응답에서 JSON 배열 추출 — 방어적 파싱."""
+    # 1. ```json ... ``` 블록 우선
+    candidate = text
+    if "```json" in candidate:
+        candidate = candidate.split("```json", 1)[1].split("```", 1)[0]
+    elif "```" in candidate:
+        candidate = candidate.split("```", 1)[1].split("```", 1)[0]
+    else:
+        # raw JSON 배열 — 첫 [ 부터 마지막 ] 까지
+        s, e = candidate.find("["), candidate.rfind("]")
+        if s != -1 and e != -1:
+            candidate = candidate[s : e + 1]
+    try:
+        parsed = json.loads(candidate.strip())
+    except json.JSONDecodeError:
+        logger.warning("Failed to parse batch category JSON: %r", text[:200])
+        return []
+    if not isinstance(parsed, list):
+        return []
+    out: list[dict[str, Any]] = []
+    for item in parsed:
+        if not isinstance(item, dict):
+            continue
+        cat = item.get("category", "Other")
+        if cat not in ALLOWED_CATEGORIES:
+            cat = "Other"
+        try:
+            conf = float(item.get("confidence", 0.0))
+        except (TypeError, ValueError):
+            conf = 0.0
+        conf = max(0.0, min(1.0, conf))
+        out.append({
+            "repo_name": str(item.get("repo_name", "")).strip(),
+            "category": cat,
+            "confidence": conf,
+            "reasoning": str(item.get("reasoning", ""))[:200],
+        })
+    return out
+
+
+def classify_repos_batch(
+    rows: list[dict[str, Any]],
+    insight_markdown: str,
+    date: str,
+) -> list[dict[str, Any]]:
+    """Top-N repo 를 단일 Bedrock 호출로 분류.
+
+    Args:
+        rows: Athena Gold 결과 (repo_name, dominant_event_type, event_count 키 사용)
+        insight_markdown: 같은 호출에서 만든 인사이트 마크다운 (참고 컨텍스트)
+        date: YYYY-MM-DD
+
+    Returns:
+        [{"repo_name", "category", "confidence", "reasoning"}, ...]
+        실패 시 빈 리스트 (호출자가 fallback 처리)
+    """
+    if not rows:
+        return []
+
+    template = _load_prompt("repo_category_batch_v1")
+    repo_lines = "\n".join(
+        f"- {r.get('repo_name')} (주요 활동: {r.get('dominant_event_type','Unknown')}, 활동수: {r.get('event_count','?')})"
+        for r in rows
+    )
+    # 인사이트 마크다운은 길어질 수 있어서 적당히 잘라줌
+    excerpt = (insight_markdown or "(인사이트 없음)")[:4000]
+
+    system_text, user_text = _build_prompt(
+        template,
+        date=date,
+        n=len(rows),
+        repo_lines=repo_lines,
+        insight_excerpt=excerpt,
+    )
+
+    logger.info("category.batch_call n=%d date=%s", len(rows), date)
+    try:
+        result = bedrock_client.invoke_with_meta(
+            user_text=user_text,
+            system=system_text,
+            max_tokens=1200,        # 10개 repo × ~80 tokens 여유
+            temperature=0.0,
+        )
+    except Exception as e:
+        logger.exception("category.batch_call bedrock error: %s", e)
+        return []
+
+    parsed = _parse_batch_response(result["text"])
+    logger.info(
+        "category.batch_call done parsed=%d/%d latency=%dms",
+        len(parsed), len(rows), result.get("latency_ms", 0),
+    )
+    return parsed
+
+
 # ─── 일별 배치 분류 (메인 진입점) ──────────────────────
 
 def categorize_daily(date: str, force: bool = False) -> dict[str, Any]:

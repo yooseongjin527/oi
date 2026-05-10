@@ -1,20 +1,29 @@
 """
 services/repo_service.py
-Repo 프로필 페이지 — Athena hourly + daily 메트릭 + OpenSearch 인사이트 통합 조회.
+Repo 프로필 페이지 — Athena hourly + daily 메트릭 + 단일 repo 인사이트 생성/캐시.
 
 데이터 소스:
 - oi.gold_repo_hourly      → 24시간 시계열
 - oi.gold_repo_daily       → 일별 메트릭 (event_count, dominant_event_type, ...)
 - oi.gold_repo_acceleration → 가속도 (전일 대비 비율)
 - oi.gold_repo_anomaly     → 이상 탐지 (z-score)
-- OpenSearch oi-repo-daily → 그날의 인사이트 마크다운
+- OpenSearch oi-repo-daily → 그 repo·그 날짜에 캐시된 단일 인사이트 마크다운
+                              (없으면 Bedrock 으로 즉석 생성 후 캐시)
+
+설계 원칙:
+- 대시보드의 통합 인사이트(Top 3)와 별도로, repo 상세 페이지는 항상 그 repo
+  단독에 대한 분석을 보여줌. Top 3 든 아니든 일관된 사용자 경험.
+- 첫 진입 시 Bedrock 호출 1회 (~2-3초, ~$0.0001), 이후엔 OpenSearch 캐시 hit.
 """
 import logging
+from pathlib import Path
 from typing import Any
 
 from services import athena_client
 
 logger = logging.getLogger(__name__)
+
+_PROMPT_DIR = Path(__file__).parent.parent / "prompts"
 
 
 # ─── SQL 정의 ───────────────────────────────────────────
@@ -90,30 +99,74 @@ def _fill_24h(rows: list[dict]) -> list[dict]:
     return result
 
 
-def _extract_repo_section(insight_md: str | None, repo_name: str) -> str | None:
+def _load_prompt(name: str) -> str:
+    return (_PROMPT_DIR / f"{name}.md").read_text(encoding="utf-8")
+
+
+def _build_single_prompt(template_md: str, **kwargs) -> tuple[str, str]:
+    """## system / ## user_template 분리 + {{key}} 치환."""
+    parts = template_md.split("## user_template")
+    system_raw = parts[0].replace("## system", "").strip()
+    user_raw = parts[1].strip() if len(parts) > 1 else ""
+    user_text = user_raw
+    for key, val in kwargs.items():
+        user_text = user_text.replace(f"{{{{{key}}}}}", str(val))
+    return system_raw, user_text
+
+
+def _fmt(v: Any, decimals: int = 2, default: str = "—") -> str:
+    """메트릭 값을 prompt 에 넣기 좋은 문자열로 포맷."""
+    if v is None or v == "":
+        return default
+    try:
+        f = float(v)
+        if f != f:  # NaN
+            return default
+        return f"{f:.{decimals}f}"
+    except (TypeError, ValueError):
+        return str(v)
+
+
+def _generate_repo_insight(repo_name: str, date: str, metrics: dict) -> str | None:
+    """단일 repo Bedrock 호출로 그날 인사이트 마크다운 생성.
+
+    실패해도 None 반환 (caller 가 best-effort 처리).
     """
-    인사이트 마크다운 전체에서 해당 repo 섹션만 추출.
-
-    프롬프트 템플릿이 #### N. [owner/name](url) 형식으로 섹션을 만드는 걸 활용.
-    매칭 안 되면 None 반환.
-    """
-    if not insight_md:
+    try:
+        from services import bedrock_client
+        template = _load_prompt("repo_single_insight_v1")
+        system_text, user_text = _build_single_prompt(
+            template,
+            date=date,
+            repo_name=repo_name,
+            event_count=metrics.get("event_count") or "?",
+            dominant_event_type=metrics.get("dominant_event_type") or "Unknown",
+            acceleration_ratio=_fmt(metrics.get("acceleration_ratio")),
+            anomaly_score=_fmt(metrics.get("anomaly_score")),
+            watch_zscore=_fmt(metrics.get("watch_zscore")),
+            watch_count=metrics.get("watch_count") or 0,
+            fork_count=metrics.get("fork_count") or 0,
+            pr_count=metrics.get("pr_count") or 0,
+            push_count=metrics.get("push_count") or 0,
+        )
+        result = bedrock_client.invoke_with_meta(
+            user_text=user_text,
+            system=system_text,
+            max_tokens=400,        # 짧은 마크다운 3줄
+            temperature=0.4,
+        )
+        text = (result.get("text") or "").strip()
+        logger.info(
+            "repo_insight.generate repo=%s date=%s tokens=%d/%d latency=%dms",
+            repo_name, date,
+            result.get("input_tokens", 0), result.get("output_tokens", 0),
+            result.get("latency_ms", 0),
+        )
+        return text or None
+    except Exception as e:
+        logger.warning("repo_insight.generate failed repo=%s date=%s: %s",
+                       repo_name, date, e)
         return None
-
-    if repo_name not in insight_md:
-        return None
-
-    # #### N. 으로 시작하는 섹션 헤더 기준으로 split
-    # repo_name 이 있는 섹션부터 다음 #### 까지 추출
-    parts = insight_md.split("\n#### ")
-    for part in parts:
-        if repo_name in part:
-            # 첫 part 가 아니면 #### 헤더 prefix 복원
-            if not part.startswith("#"):
-                part = "#### " + part
-            return part.strip()
-
-    return None
 
 
 # ─── 메인 함수 ─────────────────────────────────────────
@@ -158,25 +211,33 @@ def get_repo_profile(repo_name: str, date: str) -> dict[str, Any]:
     metrics = metrics_rows[0] if metrics_rows else {}
     logger.info("repo_profile.metrics found=%s", bool(metrics))
 
-    # 3. 그날의 인사이트 — OpenSearch 에서 조회 (best-effort)
-    # import 를 함수 안에 둔 이유: OpenSearch 가 fastapi startup 시점에
-    # 안 떠있어도 fastapi 자체는 뜨도록 안전장치
-    insight_section = None
+    # 3. 그날의 인사이트 — 이 repo 단독에 대한 분석 (캐시 hit → 즉시, miss → Bedrock 호출)
+    # OpenSearch 의 같은 doc (date_repo_name) 에 repo_insight_markdown 필드 캐시.
+    # 비용: Haiku 4.5 단일 호출 ~$0.0001 / 캐시 hit 후엔 0.
+    insight_markdown: str | None = None
+    insight_cached: bool = False
     try:
         from services import opensearch_client
-        result = opensearch_client.get_by_date(date=date, size=20)
-        for hit in result.get("hits", []):
-            if hit.get("repo_name") == repo_name:
-                insight_md = hit.get("insight_markdown")
-                insight_section = _extract_repo_section(insight_md, repo_name)
-                break
+        cached = opensearch_client.get_repo_insight(date, repo_name)
+        if cached:
+            insight_markdown = cached
+            insight_cached = True
+            logger.info("repo_insight.cache_hit repo=%s date=%s", repo_name, date)
+        elif metrics:
+            # 메트릭이 있을 때만 Bedrock 호출 (메트릭 자체가 없으면 분석 불가)
+            generated = _generate_repo_insight(repo_name, date, metrics)
+            if generated:
+                insight_markdown = generated
+                # best-effort 캐시 — 실패해도 응답은 정상
+                opensearch_client.cache_repo_insight(date, repo_name, generated)
     except Exception as e:
-        logger.warning("repo_profile.opensearch failed (non-fatal): %s", e)
+        logger.warning("repo_profile.insight failed (non-fatal): %s", e)
 
     return {
         "repo_name": repo_name,
         "date": date,
         "metrics": metrics,
         "timeline": timeline,
-        "insight_section": insight_section,
+        "insight_markdown": insight_markdown,   # 이 repo 의 그날 단독 인사이트
+        "insight_cached": insight_cached,       # 캐시 hit 여부 (디버깅/UI 작은 라벨용)
     }

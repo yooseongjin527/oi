@@ -41,6 +41,10 @@ GHARCHIVE_URL_TEMPLATE = "https://data.gharchive.org/{date}-{hour}.json.gz"
 DOWNLOAD_TIMEOUT_SEC = 300  # 5 min — large hours can be 100+ MB
 HTTP_CHUNK_SIZE = 1024 * 1024  # 1 MiB streaming chunks
 
+# GHArchive 는 한 시간 끝난 후 평균 60~120 분 lag 후에야 publish.
+# data_interval_end 이후 이만큼 지나기 전엔 fetch 안 시도 (404 발생 방지).
+PUBLISH_LAG_MIN = 90
+
 
 # ----------------------------------------------------------------------
 # Helpers
@@ -69,13 +73,41 @@ def _s3_key(dt: datetime) -> str:
 
 
 def _object_exists(s3_client, bucket: str, key: str) -> bool:
-    """Return True if S3 object exists with non-zero size."""
+    """Return True if S3 object exists with non-zero size.
+
+    S3 HeadObject 응답 코드 매핑:
+    - 200: 객체 존재
+    - 404: 객체 없음 + s3:ListBucket 권한 있음
+    - 403: 객체 없음 + s3:ListBucket 권한 없음, 또는 객체 자체 권한 부재
+    - 5xx: AWS 일시 장애
+
+    EC2 IAM Role 에 ListBucket 이 빠져있으면 새 hour 의 객체 존재 여부 검사가
+    404 가 아닌 403 으로 돌아옵니다 (S3 보안 설계). 멱등성 체크 용도이므로
+    403 도 "없음" 으로 간주해 다운로드/업로드를 진행 — 같은 hour 의 GHArchive
+    파일은 동일한 내용이라 덮어쓰기는 안전 (멱등).
+
+    근본 해결을 원하면 EC2 IAM Role 에 다음 정책 추가:
+        Effect: Allow
+        Action: s3:ListBucket
+        Resource: arn:aws:s3:::<BUCKET>
+    그러면 404 응답으로 돌아와서 이 fallback 로직이 안 타게 됩니다.
+    """
     try:
         resp = s3_client.head_object(Bucket=bucket, Key=key)
         return resp.get("ContentLength", 0) > 0
     except ClientError as e:
-        code = e.response.get("Error", {}).get("Code")
-        if code in ("404", "NoSuchKey", "NotFound"):
+        err = e.response.get("Error", {})
+        code = err.get("Code")
+        status = e.response.get("ResponseMetadata", {}).get("HTTPStatusCode")
+        if code in ("404", "NoSuchKey", "NotFound") or status == 404:
+            return False
+        if code in ("403", "Forbidden", "AccessDenied") or status == 403:
+            log.warning(
+                "HeadObject 403 for s3://%s/%s — s3:ListBucket 권한 부재로 추정. "
+                "객체 없음으로 간주하고 다운로드 진행 (덮어쓰기는 멱등이라 안전). "
+                "근본 해결: EC2 IAM Role 에 s3:ListBucket on 버킷 추가.",
+                bucket, key,
+            )
             return False
         raise
 
@@ -90,12 +122,10 @@ def fetch_and_upload(**context) -> str:
     Download GHArchive for the run's logical hour and upload to S3.
     Logical hour = data_interval_start (UTC).
     """
-    # data_interval_start is timezone-aware UTC for hourly DAGs
-    target_dt: datetime = context["data_interval_start"]
-    if target_dt.tzinfo is None:
-        target_dt = target_dt.replace(tzinfo=timezone.utc)
-    else:
-        target_dt = target_dt.astimezone(timezone.utc)
+    # data_interval_start 는 pendulum.DateTime — stdlib datetime 과 산술 시
+    # 'offset-naive vs offset-aware' 충돌이 나는 케이스가 있어 강제 정규화.
+    raw_dt = context["data_interval_start"]
+    target_dt = datetime.fromtimestamp(raw_dt.timestamp(), tz=timezone.utc)
 
     url = _gharchive_url(target_dt)
     key = _s3_key(target_dt)
@@ -110,6 +140,28 @@ def fetch_and_upload(**context) -> str:
     if _object_exists(s3, S3_BUCKET, key):
         log.info("Object already exists in S3, skipping.")
         raise AirflowSkipException(f"s3://{S3_BUCKET}/{key} already present")
+
+    # GHArchive publish lag 가드 — data_interval_end + PUBLISH_LAG_MIN 미만이면 retry
+    now = datetime.now(timezone.utc)
+    data_interval_end = target_dt + timedelta(hours=1)
+    elapsed_min = (now - data_interval_end).total_seconds() / 60.0
+    if elapsed_min < PUBLISH_LAG_MIN:
+        wait_min = PUBLISH_LAG_MIN - elapsed_min
+        raise RuntimeError(
+            f"GHArchive not yet published: only {elapsed_min:.0f}min after "
+            f"data_interval_end, need {PUBLISH_LAG_MIN}min (~{wait_min:.0f}min more). "
+            f"Will retry."
+        )
+
+    # 추가 가드: HEAD 로 빠른 존재 확인 → 없으면 retry (다운로드 시간 절약)
+    try:
+        head_resp = requests.head(url, timeout=15, allow_redirects=True)
+    except requests.RequestException as e:
+        raise RuntimeError(f"HEAD request failed for {url}: {e}")
+    if head_resp.status_code == 404:
+        raise RuntimeError(f"GHArchive object not yet available (404): {url}. Will retry.")
+    if head_resp.status_code >= 400:
+        raise RuntimeError(f"HEAD {url} -> {head_resp.status_code}")
 
     # Stream-download to a temp file (don't load whole file into memory)
     with tempfile.NamedTemporaryFile(suffix=".json.gz", delete=True) as tmp:
@@ -157,10 +209,12 @@ def fetch_and_upload(**context) -> str:
 
 default_args = {
     "owner": "jin",
-    "retries": 3,
+    # GHArchive 발행 lag 가 변동적이라 충분한 retry 시간 확보
+    # 5 → 10 → 20 → 40 → 60 → 60min cap. 누적 약 3시간 안에 성공해야 함.
+    "retries": 6,
     "retry_delay": timedelta(minutes=5),
     "retry_exponential_backoff": True,
-    "max_retry_delay": timedelta(minutes=30),
+    "max_retry_delay": timedelta(minutes=60),
 }
 
 with DAG(

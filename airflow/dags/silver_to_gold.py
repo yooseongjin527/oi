@@ -84,7 +84,9 @@ def _s3_cleanup(prefix: str):
 @dag(
     dag_id="silver_to_gold",
     start_date=datetime(2026, 4, 27, tzinfo=timezone.utc),
-    schedule="0 3 * * *",                     # bronze_to_silver(02:00) 후 1시간 lag
+    # 매일 01:00 UTC = KST 10:00 — bronze_to_silver(00:30 UTC) 후 30분 lag.
+    # KST 사용자가 어제 분석을 오전 10시에 확인 가능.
+    schedule="0 1 * * *",
     catchup=True,
     max_active_runs=2,
     default_args={"owner": "jin", "retries": 1, "retry_delay": timedelta(minutes=5)},
@@ -104,6 +106,37 @@ def silver_to_gold_dag():
             "lang":   f"{GOLD_LANG_PREFIX}/year={y}/month={m}/day={d}/",
         }
         return {k: _s3_cleanup(p) for k, p in prefixes.items()}
+
+    @task(retries=6, retry_delay=timedelta(minutes=15))
+    def gate_silver_ready(logical_date=None):
+        """Silver 파티션이 채워졌는지 사전 검증.
+
+        bronze_to_silver 가 늦게 끝났을 때 silver 가 비어있는 채로 INSERT 가
+        0건을 적재하는 사고를 막기 위한 gate. silver 가 비면 즉시 RuntimeError 를
+        던져 후속 INSERT 들이 아예 돌지 않게 함.
+
+        retry 정책을 task 단위로 강하게 (6회 × 15분) 잡아서 bronze_to_silver 가
+        뒤늦게 silver 를 채워주는 시나리오를 자연스럽게 흡수. 최대 1.5h 대기.
+        """
+        y, m, d = _parts(logical_date)
+        sql = f"""
+        SELECT COUNT(*) AS cnt
+        FROM oi.silver_events
+        WHERE year = '{y}' AND month = '{m}' AND day = '{d}'
+        """
+        info = _athena_run(sql)
+        qid = info["QueryExecutionId"]
+        athena = boto3.client("athena", region_name=REGION)
+        rows = athena.get_query_results(QueryExecutionId=qid)["ResultSet"]["Rows"]
+        cnt_str = rows[1]["Data"][0].get("VarCharValue", "0") if len(rows) > 1 else "0"
+        cnt = int(cnt_str or 0)
+        logger.info("Silver row count for %s-%s-%s: %d", y, m, d, cnt)
+        if cnt == 0:
+            raise RuntimeError(
+                f"Silver empty for {y}-{m}-{d}. bronze_to_silver 의 logical_date "
+                f"{y}-{m}-{d} run 이 성공했는지 먼저 확인하세요."
+            )
+        return cnt
 
     @task
     def insert_repo_daily(logical_date=None):
@@ -370,6 +403,7 @@ def silver_to_gold_dag():
         }
 
     c = cleanup()
+    g = gate_silver_ready()
     r = insert_repo_daily()
     a = insert_actor_daily()
     f2 = insert_repo_acceleration()
@@ -377,7 +411,7 @@ def silver_to_gold_dag():
     f4_hourly = insert_repo_hourly()
     f4_lang = insert_language_activity()
     v = verify()
-    c >> [r, a, f2, f3, f4_hourly, f4_lang] >> v
+    c >> g >> [r, a, f2, f3, f4_hourly, f4_lang] >> v
 
 
 dag_instance = silver_to_gold_dag()

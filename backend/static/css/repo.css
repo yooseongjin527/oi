@@ -398,6 +398,28 @@
     line-height: 1.7;
     font-size: 14px;
 }
+.repo-insight-tag {
+    display: block;
+    padding: 10px 12px;
+    margin-bottom: 14px;
+    background: rgba(127, 119, 221, 0.08);
+    border: 1px solid rgba(127, 119, 221, 0.20);
+    border-radius: var(--radius-md);
+    color: var(--text-secondary);
+    -webkit-text-fill-color: var(--text-secondary);
+    font-family: var(--font-sans);
+    font-size: 12.5px;
+    line-height: 1.55;
+    letter-spacing: -0.005em;
+    word-break: keep-all;
+}
+.repo-insight-tag--top {
+    background: linear-gradient(135deg, rgba(255,138,75,0.10), rgba(229,177,76,0.08));
+    border-color: rgba(229,177,76,0.32);
+    color: #F0C868;
+    -webkit-text-fill-color: #F0C868;
+    font-weight: 600;
+}
 .repo-insight-body h2,
 .repo-insight-body h3,
 .repo-insight-body h4 {

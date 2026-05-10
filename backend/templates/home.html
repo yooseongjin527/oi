@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Opensource Insights — GitHub 트렌딩의 '왜'를 알려주는 분석 서비스{% endblock %}
+{% block title %}Opensource Insights — 오늘 뜨는 GitHub 프로젝트, 왜 떴는지까지{% endblock %}
 
 {% block extra_css %}
 <link rel="stylesheet" href="/static/css/home.css" />
@@ -12,52 +12,107 @@
 
     <div class="hero-eyebrow">
         <span class="live-dot"></span>
-        Real-time GitHub Trending Analytics
+        매일 갱신되는 GitHub 트랜드 분석
     </div>
 
     <h1 class="hero-title">
-        GitHub Trending을 매일 본다.<br />
-        하지만 <em>왜</em> 떴는지는 아무도 안 알려준다.
+        매일 새로 정리되는 GitHub 트랜드<br />
+        그 <em>이유</em>까지 한눈에
     </h1>
 
     <p class="hero-sub">
-        OI는 5분 단위로 GitHub 활동을 추적하고, 급부상 중인 repo와 그 원인을<br />
-        AI가 한국어로 요약해 드립니다. 가속도 점수, 이상 급등 탐지까지 한 화면에서.
+        어제 떠오른 프로젝트의 부상 원인을 AI 가 한국어로 정리해드리고,<br />
+        오늘 진행 중인 활동은 시간대별 + 실시간으로 함께 보여드립니다.
     </p>
 
-    {# CTA #}
     <div class="hero-cta">
         {% if user and user.status.value == "approved" %}
-            <a href="/dashboard" class="btn btn--primary">트렌드 대시보드 열기 →</a>
+            <a href="/dashboard" class="btn btn--primary">오늘의 트랜드 보러 가기 →</a>
         {% elif user and user.status.value == "pending" %}
             <a href="/pending" class="btn btn--ghost">승인 대기 중</a>
         {% else %}
-            <a href="/signup" class="btn btn--primary">시작하기</a>
+            <a href="/signup" class="btn btn--primary">무료로 시작하기</a>
             <a href="/login" class="btn btn--ghost">로그인</a>
         {% endif %}
     </div>
 
-    {# Hero stats — 서비스 임팩트 시각화 #}
+    {# Hero stats — 시간 해상도 3종 데이터 소개 #}
     <div class="hero-stats">
         <div class="hero-stat">
-            <div class="hero-stat-value">5<span class="hero-stat-unit">min</span></div>
-            <div class="hero-stat-label">수집 주기</div>
+            <div class="hero-stat-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+                </svg>
+            </div>
+            <div class="hero-stat-value"><span class="hero-stat-accent">분</span> 단위 · 실시간</div>
+            <div class="hero-stat-label">지금 GitHub 에서 발생하는 활동을 1분 단위로 즉시 보여드립니다</div>
         </div>
-        <div class="hero-stat-divider" aria-hidden="true"></div>
         <div class="hero-stat">
-            <div class="hero-stat-value">6<span class="hero-stat-unit">cat</span></div>
-            <div class="hero-stat-label">자동 분류</div>
+            <div class="hero-stat-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="6" y1="20" x2="6" y2="13"/>
+                    <line x1="12" y1="20" x2="12" y2="6"/>
+                    <line x1="18" y1="20" x2="18" y2="10"/>
+                    <line x1="3" y1="20" x2="21" y2="20"/>
+                </svg>
+            </div>
+            <div class="hero-stat-value"><span class="hero-stat-accent">시간</span> 단위 · 오늘</div>
+            <div class="hero-stat-label">하루 24시간 중 어느 시간대가 활발한지 매시간 새로 정리합니다</div>
         </div>
-        <div class="hero-stat-divider" aria-hidden="true"></div>
         <div class="hero-stat">
-            <div class="hero-stat-value">24<span class="hero-stat-unit">h</span></div>
-            <div class="hero-stat-label">시계열 추이</div>
+            <div class="hero-stat-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+                </svg>
+            </div>
+            <div class="hero-stat-value"><span class="hero-stat-accent">일</span> 단위 · AI 종합</div>
+            <div class="hero-stat-label">어제의 급상승 / 인기 폭발 / 분야별 트랜드를 AI 가 한국어로 정리합니다</div>
         </div>
-        <div class="hero-stat-divider" aria-hidden="true"></div>
-        <div class="hero-stat">
-            <div class="hero-stat-value">AI<span class="hero-stat-unit">·KR</span></div>
-            <div class="hero-stat-label">한국어 인사이트</div>
-        </div>
+    </div>
+</section>
+
+{# ─── 어떻게 동작하나요? — 3단계 ─────────────── #}
+<section class="how-it-works" aria-label="OI 사용 방법">
+    <div class="hiw-eyebrow">어떻게 동작하나요?</div>
+    <h2 class="hiw-title">단순한 3단계로 GitHub의 오늘을 정리해드립니다.</h2>
+
+    <div class="hiw-grid">
+        <article class="hiw-card">
+            <div class="hiw-step">01</div>
+            <div class="hiw-card-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    <path d="M12 7v5l3 2"/>
+                </svg>
+            </div>
+            <h3>24시간 추적</h3>
+            <p>전 세계 GitHub에서 일어나는 별·코드·이슈 활동을 실시간으로 모읍니다. 매 1분마다 새로운 활동이 들어옵니다.</p>
+        </article>
+
+        <article class="hiw-card">
+            <div class="hiw-step">02</div>
+            <div class="hiw-card-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+                </svg>
+            </div>
+            <h3>AI가 정리</h3>
+            <p>어떤 프로젝트가 갑자기 떠오르는지, 그 이유는 무엇인지 Claude AI가 2~3문장으로 요약해드립니다.</p>
+        </article>
+
+        <article class="hiw-card">
+            <div class="hiw-step">03</div>
+            <div class="hiw-card-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="3" width="7" height="9" rx="1"/>
+                    <rect x="14" y="3" width="7" height="5" rx="1"/>
+                    <rect x="3" y="16" width="7" height="5" rx="1"/>
+                    <rect x="14" y="12" width="7" height="9" rx="1"/>
+                </svg>
+            </div>
+            <h3>한 화면에서</h3>
+            <p>전일 대비 급상승 Top 10, 분야별 인기 프로젝트, 갑작스런 인기 폭발까지 매일 오전 10시 자동 갱신됩니다.</p>
+        </article>
     </div>
 </section>
 
@@ -72,19 +127,20 @@
             </svg>
         </div>
         <div class="access-banner-body">
-            <h3>실시간 트렌드 분석은 로그인 후 이용 가능합니다</h3>
+            <h3>로그인 후 무료로 이용할 수 있습니다</h3>
             <p>
-                관리자 승인을 받은 사용자에게는 매일의 GitHub 트렌딩 인사이트,
-                가속도 점수, 이상 급등 탐지, 카테고리별 분류, repo 프로필이 제공됩니다.
+                오용 방지를 위해 회원가입 후 관리자 승인을 거쳐야 대시보드를 볼 수 있습니다.
+                승인되면 매일 갱신되는 트랜드, 급상승 프로젝트, 분야별 인기, 실시간 GitHub 활동까지 모두 무료로 이용 가능합니다.
             </p>
         </div>
     </div>
 </section>
 {% endif %}
 
+{# ─── 무엇을 보여드리나요? — features ─────────────── #}
 <section id="features" class="features">
-    <div class="features-eyebrow">제공 기능</div>
-    <h2 class="features-title">데이터에서 <em>왜</em>를 끌어내는 6가지 분석</h2>
+    <div class="features-eyebrow">무엇을 보여드리나요?</div>
+    <h2 class="features-title">개발자가 아니어도 한눈에 이해되는 <em>6가지 정보</em></h2>
 
     <div class="feature-grid">
         <article class="feature-card feature-card--ai">
@@ -93,8 +149,8 @@
                     <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
                 </svg>
             </div>
-            <h3>AI 인사이트 카드</h3>
-            <p>트렌딩 repo의 부상 원인을 Claude가 한국어로 2~3문장 요약합니다.</p>
+            <h3>왜 떴는지 AI가 설명</h3>
+            <p>어제 가장 주목받은 프로젝트가 왜 떠올랐는지, Claude AI가 2~3문장으로 깔끔히 정리해드립니다.</p>
         </article>
 
         <article class="feature-card feature-card--trend">
@@ -104,8 +160,8 @@
                     <polyline points="16 7 22 7 22 13"/>
                 </svg>
             </div>
-            <h3>가속도 점수</h3>
-            <p>5분 단위 변화율 기반 트렌딩 Top 10 라이브 차트를 제공합니다.</p>
+            <h3>전일 대비 급상승 Top 10</h3>
+            <p>그저께보다 어제 활동이 가장 많이 폭증한 프로젝트 10개. 빠르게 떠오르는 곳을 한눈에 보여드립니다.</p>
         </article>
 
         <article class="feature-card feature-card--anom">
@@ -116,8 +172,8 @@
                     <line x1="12" y1="17" x2="12.01" y2="17"/>
                 </svg>
             </div>
-            <h3>이상 급등 탐지</h3>
-            <p>z-score 기반 급등을 감지하고 봇/바이럴 패턴을 자동 구분합니다.</p>
+            <h3>갑작스런 인기 폭발 감지</h3>
+            <p>평소와 다르게 갑자기 별이 폭증한 프로젝트를 통계적으로 감지해서 알려드립니다.</p>
         </article>
 
         <article class="feature-card feature-card--lang">
@@ -129,8 +185,8 @@
                     <rect x="14" y="14" width="7" height="7" rx="1"/>
                 </svg>
             </div>
-            <h3>언어 활동 히트맵</h3>
-            <p>시간대별 프로그래밍 언어별 활동량을 한눈에 시각화합니다.</p>
+            <h3>시간대별 활동 패턴</h3>
+            <p>하루 24시간 중 코드 작성, PR, 별 받기 등 어떤 활동이 어느 시간에 가장 활발한지 한눈에.</p>
         </article>
 
         <article class="feature-card feature-card--cat">
@@ -140,8 +196,8 @@
                     <line x1="7" y1="7" x2="7.01" y2="7"/>
                 </svg>
             </div>
-            <h3>카테고리별 트렌딩</h3>
-            <p>AI/ML, Web, Infra, Game 등 LLM이 자동 분류한 카테고리 뷰.</p>
+            <h3>분야별 인기 트렌드</h3>
+            <p>AI/ML · 웹 · 인프라 · 게임 · 개발 도구 등 6개 분야로 자동 분류해서 보여드립니다.</p>
         </article>
 
         <article class="feature-card feature-card--repo">
@@ -152,10 +208,9 @@
                     <line x1="12" y1="22.08" x2="12" y2="12"/>
                 </svg>
             </div>
-            <h3>Repo 프로필</h3>
-            <p>24h/7d 활동 추이, 주요 contributor, 관련 저장소를 표시합니다.</p>
+            <h3>프로젝트 상세 페이지</h3>
+            <p>관심 가는 프로젝트의 24시간/7일 활동 추이, 주요 기여자, 비슷한 프로젝트를 한곳에 모아 봅니다.</p>
         </article>
     </div>
 </section>
-
 {% endblock %}

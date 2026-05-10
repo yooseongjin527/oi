@@ -46,7 +46,7 @@
 <!-- 로딩 / 에러 -->
 <section class="repo-loading" id="repo-loading">
     <div class="loading-spinner"></div>
-    <p>Athena 에서 시계열 데이터 조회 중…</p>
+    <p>데이터를 불러오는 중입니다…</p>
 </section>
 
 <section class="repo-error" id="repo-error" style="display:none;">
@@ -137,7 +137,7 @@
                     </span>
                     그날의 인사이트
                 </h2>
-                <span class="repo-chart-sub">Bedrock Claude</span>
+                <span class="repo-chart-sub">AI 한국어 요약</span>
             </div>
             <div class="repo-insight-body" id="insight-body"></div>
         </div>
@@ -195,7 +195,7 @@ async function loadProfile() {
         renderMetrics(data.metrics);
         renderChart(data.timeline);
         renderTypes(data.metrics);
-        renderInsight(data.insight_section);
+        renderInsight(data.insight_markdown);
 
         loading.style.display = "none";
         body.style.display = "block";
@@ -353,11 +353,18 @@ function renderTypes(m) {
     }).join("");
 }
 
-function renderInsight(insightSection) {
-    if (!insightSection) return;
+function renderInsight(markdown) {
     const card = document.getElementById("insight-card");
     const body = document.getElementById("insight-body");
-    body.innerHTML = marked.parse(insightSection);
+    if (!card || !body) return;
+
+    // 이 repo 단독에 대한 그날 인사이트 (백엔드에서 캐시 hit → cached, miss → 즉석 생성).
+    // 메트릭이 아예 없는 날짜·repo (분석 대상 미달) 는 백엔드가 null 반환 → 카드 숨김.
+    if (!markdown) {
+        card.style.display = "none";
+        return;
+    }
+    body.innerHTML = marked.parse(markdown);
     card.style.display = "block";
 }
 

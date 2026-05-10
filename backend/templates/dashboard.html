@@ -8,15 +8,109 @@
 
 {% block content %}
 <section class="dashboard-greeting">
-    <div class="dashboard-eyebrow">
-        <span class="live-dot"></span>
-        대시보드
+    <div class="dashboard-greeting-row">
+        <div class="dashboard-greeting-text">
+            <div class="dashboard-eyebrow">
+                <span class="live-dot"></span>
+                대시보드
+            </div>
+            <h1><span>{{ user.username }}</span>님, 환영합니다.</h1>
+            <p class="dashboard-sub">
+                대시보드는 위에서 아래로 <strong>세 가지 시점의 GitHub 활동</strong>을 함께 보여드립니다.
+            </p>
+            <ul class="dashboard-sub-list">
+                <li>
+                    <span class="dashboard-sub-tag dashboard-sub-tag--live">① 분 단위 · 실시간</span>
+                    <strong>지금 이 순간</strong> 발생하는 활동을 1분마다 새로 정리합니다.
+                    전체의 약 <strong>5~30%</strong>만 수집한 샘플 데이터라 정확한 숫자보다는
+                    <em>흐름·분위기 참고용</em>으로 봐주세요.
+                </li>
+                <li>
+                    <span class="dashboard-sub-tag dashboard-sub-tag--hourly">② 시간 단위 · 오늘</span>
+                    <strong>오늘 0시(한국시간)부터 지금까지</strong>의 시간대별 활동량입니다.
+                    매시간 새로 정리되며 각 시간대는 약 <strong>2~3시간 뒤</strong>에 표시됩니다.
+                    GitHub 전체 활동을 빠짐없이 모은 <strong>풀 커버리지</strong> 데이터입니다.
+                </li>
+                <li>
+                    <span class="dashboard-sub-tag dashboard-sub-tag--daily">③ 일 단위 · 어제 종합</span>
+                    <strong>어제 하루(한국시간 어제 09시 ~ 오늘 08시 59분)</strong>의 활동을 분석한
+                    <em>급상승 · 갑작스런 인기 · 분야별 트렌드 · AI 요약</em>입니다.
+                    매일 <strong>오전 10시(한국시간)</strong>에 자동 갱신되며 역시 <strong>풀 커버리지</strong>입니다.
+                </li>
+            </ul>
+        </div>
     </div>
-    <h1><span>{{ user.username }}</span>님, 환영합니다.</h1>
-    <p class="dashboard-sub">
-        GitHub 트렌딩 분석을 실시간으로 제공합니다. 매일의 인사이트, 가속도 점수,
-        이상 급등 탐지, 카테고리별 분류를 한 화면에서 확인하세요.
-    </p>
+</section>
+
+<!-- ── 실시간 GitHub 활동 (streaming · 5초 폴링) ── -->
+<section class="live-pulse" aria-label="실시간 GitHub 활동">
+    <div class="live-pulse-inner">
+        <div class="live-pulse-head">
+            <div class="live-pulse-title">
+                <span class="live-dot"></span>
+                <span>지금 GitHub에서</span>
+                <span class="live-pulse-meta" id="live-pulse-meta">연결 대기…</span>
+            </div>
+            <div class="live-pulse-window">최근 1시간 · 1분 단위 집계</div>
+        </div>
+        <div class="live-pulse-body">
+            <div class="live-pulse-now">
+                <div class="live-pulse-now-label">지난 1분 동안</div>
+                <div class="live-pulse-now-value" id="live-pulse-now">—</div>
+                <div class="live-pulse-now-sub" id="live-pulse-now-sub">건의 활동</div>
+            </div>
+            <svg class="live-pulse-spark" id="live-pulse-spark"
+                 viewBox="0 0 600 80" preserveAspectRatio="none" aria-hidden="true"></svg>
+            <div class="live-pulse-totals">
+                <div class="live-pulse-total">
+                    <div class="live-pulse-total-value" id="live-pulse-total-events">—</div>
+                    <div class="live-pulse-total-label">최근 1시간 활동 수</div>
+                </div>
+                <div class="live-pulse-total">
+                    <div class="live-pulse-total-value" id="live-pulse-total-actors">—</div>
+                    <div class="live-pulse-total-label">참여한 사람 수</div>
+                </div>
+            </div>
+        </div>
+        <div class="live-pulse-foot">
+            <div class="live-pulse-foot-label">방금 가장 활발한 프로젝트 (최근 5분)</div>
+            <div class="live-pulse-top" id="live-pulse-top">
+                <span class="live-pulse-top-empty">집계 중…</span>
+            </div>
+        </div>
+        <div class="live-pulse-note">
+            <span class="live-pulse-note-icon" aria-hidden="true">ⓘ</span>
+            전체 GitHub 활동 중 일부만 수집한 데이터입니다. 정확한 숫자보다 흐름·분위기 참고용으로 봐주세요. 빠짐없는 데이터는 아래 "어제 종합 분석"에서 확인하세요.
+        </div>
+    </div>
+</section>
+
+<!-- ── 오늘의 시간대별 진행 (hourly mart, 매시 05분 갱신) ── -->
+<section class="today-hourly" id="today-hourly" aria-label="오늘 시간대별 진행">
+    <div class="today-hourly-inner">
+        <div class="today-hourly-head">
+            <div class="today-hourly-title">
+                <span class="today-hourly-title-text">오늘 시간대별 진행</span>
+                <span class="today-hourly-meta" id="today-hourly-meta">불러오는 중…</span>
+            </div>
+            <div class="today-hourly-source">한국시간 기준 · 매시간 새로 정리</div>
+        </div>
+        <div class="today-hourly-chart-wrap">
+            <svg class="today-hourly-chart" id="today-hourly-chart"
+                 viewBox="0 0 720 160" preserveAspectRatio="none" aria-hidden="true"></svg>
+            <div class="today-hourly-axis" id="today-hourly-axis"></div>
+        </div>
+        <div class="today-hourly-foot">
+            <div class="today-hourly-foot-label">오늘까지 가장 활발한 프로젝트 (Top 10)</div>
+            <div class="today-hourly-top" id="today-hourly-top">
+                <span class="today-hourly-top-empty">집계 중…</span>
+            </div>
+        </div>
+        <div class="today-hourly-note">
+            <span class="today-hourly-note-icon" aria-hidden="true">ⓘ</span>
+            GitHub 전체 활동을 빠짐없이 모은 데이터입니다. 각 시간대는 약 2~3시간 뒤에 보이기 시작합니다.
+        </div>
+    </div>
 </section>
 
 <!-- ── KPI Hero (4-up 통계) ── -->
@@ -27,17 +121,17 @@
                 <span class="kpi-label-icon">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg>
                 </span>
-                Tracked Repos
+                분석한 프로젝트
             </div>
             <div class="kpi-value" id="kpi-repos">—</div>
-            <div class="kpi-sub" id="kpi-repos-sub">data_basis</div>
+            <div class="kpi-sub" id="kpi-repos-sub">분석 대상</div>
         </div>
         <div class="kpi-card kpi-card--green">
             <div class="kpi-label">
                 <span class="kpi-label-icon">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
                 </span>
-                Top Acceleration
+                최고 가속도
             </div>
             <div class="kpi-value kpi-value--tint" id="kpi-acc">—</div>
             <div class="kpi-sub" id="kpi-acc-sub">전일 대비</div>
@@ -48,10 +142,10 @@
                 <span class="kpi-label-icon">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
                 </span>
-                Anomaly Top-Z
+                최고 관심 신호
             </div>
             <div class="kpi-value kpi-value--tint" id="kpi-z">—</div>
-            <div class="kpi-sub" id="kpi-z-sub">watch z-score</div>
+            <div class="kpi-sub" id="kpi-z-sub">별 받는 비율</div>
             <svg class="kpi-spark" id="kpi-z-spark" viewBox="0 0 80 28" preserveAspectRatio="none"></svg>
         </div>
         <div class="kpi-card kpi-card--amber">
@@ -59,10 +153,10 @@
                 <span class="kpi-label-icon">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6"/></svg>
                 </span>
-                Total Events
+                전체 활동 수
             </div>
             <div class="kpi-value" id="kpi-events">—</div>
-            <div class="kpi-sub">aggregate</div>
+            <div class="kpi-sub">분석 대상 합계</div>
         </div>
     </div>
 </section>
@@ -70,19 +164,41 @@
 <!-- ── 인사이트 카드 섹션 (F1) ── -->
 <section id="insights" class="insights-section">
     <div class="insights-header">
-        <h2 class="insights-title">
-            <span class="insights-title-icon">
-                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.5c-1.1 4-3.6 5.7-3.6 9.3 0 2 1.6 3.6 3.6 3.6s3.6-1.6 3.6-3.6c0-3.6-2.5-5.3-3.6-9.3zM7 16c0 2.5 2 5 5 5s5-2.5 5-5c0 0-2 1.5-5 1.5S7 16 7 16z"/></svg>
-            </span>
-            오늘의 GitHub 트렌드
-        </h2>
-        <span class="insights-date" id="insights-date"></span>
+        <div class="insights-header-left">
+            <h2 class="insights-title">
+                <span class="insights-title-icon">
+                    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.5c-1.1 4-3.6 5.7-3.6 9.3 0 2 1.6 3.6 3.6 3.6s3.6-1.6 3.6-3.6c0-3.6-2.5-5.3-3.6-9.3zM7 16c0 2.5 2 5 5 5s5-2.5 5-5c0 0-2 1.5-5 1.5S7 16 7 16z"/></svg>
+                </span>
+                GitHub 트렌드 분석
+            </h2>
+            <span class="insights-date" id="insights-date"></span>
+        </div>
+        <div class="dashboard-date-picker">
+            <label for="date-picker" class="date-picker-label">분석 날짜</label>
+            <input type="date" id="date-picker" class="date-picker-input" />
+            <select id="date-picker-shortcut" class="date-picker-shortcut" title="사용 가능한 날짜">
+                <option value="">선택…</option>
+            </select>
+        </div>
+    </div>
+
+    <!-- 선정 기준 안내 (왜 3개만?) -->
+    <div class="insights-criteria">
+        <span class="insights-criteria-icon" aria-hidden="true">ⓘ</span>
+        <div class="insights-criteria-text">
+            <strong>오늘의 Top 3 선정 기준</strong> —
+            가속도(어제 대비 활동량 ×) <span class="insights-criteria-sep">·</span>
+            이상 점수(평소 대비 통계적 급등) <span class="insights-criteria-sep">·</span>
+            활동 규모를 합산해 정렬한 뒤,
+            명백한 봇/자동화 프로젝트를 제외한 상위 3개를 AI가 골라 한국어로 요약합니다.
+            전체 Top 10 표는 아래 <strong>근거 데이터 보기</strong>에서 확인할 수 있어요.
+        </div>
     </div>
 
     <!-- 로딩 (skeleton) -->
     <div class="insights-loading" id="insights-loading">
         <div class="loading-spinner"></div>
-        <p>Athena + Claude가 트렌드를 분석 중입니다…</p>
+        <p>AI가 오늘의 트렌드를 정리하고 있습니다…</p>
     </div>
 
     <!-- 에러 -->
@@ -98,7 +214,52 @@
         <button class="btn btn--ghost btn--sm" onclick="toggleDataBasis()">
             근거 데이터 보기 ▾
         </button>
-        <div class="data-basis-table" id="data-basis-table" style="display:none;"></div>
+        <div class="data-basis-wrap" id="data-basis-wrap" style="display:none;">
+            <div class="guide-card">
+                <div class="guide-card-head">
+                    <span class="guide-card-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="10"/>
+                            <line x1="12" y1="16" x2="12" y2="12"/>
+                            <line x1="12" y1="8" x2="12.01" y2="8"/>
+                        </svg>
+                    </span>
+                    <div>
+                        <h2 class="guide-card-title">지표 가이드</h2>
+                        <p class="guide-card-sub">아래 표의 각 컬럼이 무엇을 뜻하는지 한 번에 이해하기</p>
+                    </div>
+                </div>
+
+                <div class="guide-grid">
+                    <div class="guide-item guide-item--violet">
+                        <div class="guide-item-name">분석한 프로젝트 수</div>
+                        <div class="guide-item-desc">그날 분석 대상이 된 프로젝트 개수 (활동량 50건 이상 + 전일 대비 비교 가능한 프로젝트)</div>
+                    </div>
+                    <div class="guide-item guide-item--green">
+                        <div class="guide-item-name">가속도</div>
+                        <div class="guide-item-desc">어제 대비 오늘의 활동량 증가율. <code>×2.0</code>이면 어제의 두 배. <code>1</code>보다 크면 상승세</div>
+                    </div>
+                    <div class="guide-item guide-item--red">
+                        <div class="guide-item-name">이상 점수</div>
+                        <div class="guide-item-desc">활동량·별 받는 비율·fork 비율을 평소 평균과 비교한 점수. 값이 클수록 평소 패턴과 다른 비정상 급등</div>
+                    </div>
+                    <div class="guide-item guide-item--amber">
+                        <div class="guide-item-name">관심 신호 (별)</div>
+                        <div class="guide-item-desc">별(스타) 받는 비율이 평소보다 얼마나 높은지. 양수면 평균보다 별을 더 받는 중 = 발견되고 있다는 신호</div>
+                    </div>
+                    <div class="guide-item guide-item--violet">
+                        <div class="guide-item-name">활동 수 / 주요 활동</div>
+                        <div class="guide-item-desc">그날 발생한 총 활동 건수와 그 중 가장 많은 종류 (코드 푸시 / PR / 별 / Fork / 이슈)</div>
+                    </div>
+                    <div class="guide-item guide-item--green">
+                        <div class="guide-item-name">종합 점수</div>
+                        <div class="guide-item-desc">가속도(40%) · 이상 점수(40%) · 활동 규모(20%)를 합친 최종 점수. AI 인사이트 카드의 정렬 기준</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="data-basis-table" id="data-basis-table"></div>
+        </div>
     </div>
 </section>
 
@@ -111,12 +272,12 @@
                     <span class="metric-card-title-icon">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
                     </span>
-                    가속도 Top 10
+                    급상승 Top 10
                 </h3>
-                <span class="metric-card-sub">전일 대비 이벤트 증가율</span>
+                <span class="metric-card-sub">어제 활동 / 그저께 활동 비교</span>
             </div>
             <ol class="metric-list" id="acceleration-list"></ol>
-            <p class="metric-card-foot">acceleration_ratio = 오늘 events / 어제 events</p>
+            <p class="metric-card-foot">×2.0 = 그저께의 두 배만큼 활동이 늘었다는 뜻</p>
         </div>
 
         <div class="metric-card metric-card--anom">
@@ -125,17 +286,17 @@
                     <span class="metric-card-title-icon">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
                     </span>
-                    이상 급등 Top 5
+                    갑작스런 인기 Top 5
                 </h3>
-                <span class="metric-card-sub">Watch z-score 기반</span>
+                <span class="metric-card-sub">별 받는 비율 급증 기준</span>
             </div>
             <ol class="metric-list" id="anomaly-list"></ol>
-            <p class="metric-card-foot">z-score &gt; 3 = 통계적 유의 급등 · 봇/바이럴 패턴 분리</p>
+            <p class="metric-card-foot">평소보다 매우 두드러진 급등 · 봇/바이럴 패턴은 자동으로 구분</p>
         </div>
     </div>
 </section>
 
-<!-- ── F4: 언어 활동 히트맵 ── -->
+<!-- ── F4: 시간대별 활동 패턴 ── -->
 <section id="language-heatmap" class="metrics-section" style="display:none;">
     <div class="metric-card">
         <div class="metric-card-header">
@@ -143,16 +304,16 @@
                 <span class="metric-card-title-icon">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
                 </span>
-                언어 활동 히트맵
+                시간대별 활동 패턴
             </h3>
-            <span class="metric-card-sub">UTC 시간 × 정규화 언어</span>
+            <span class="metric-card-sub">한국시간 × 활동 종류</span>
         </div>
         <div class="lang-heatmap-wrap">
             <div class="lang-heatmap" id="lang-heatmap"></div>
             <div class="lang-heatmap-legend" id="lang-heatmap-legend"></div>
         </div>
         <p class="metric-card-foot" id="lang-heatmap-foot">
-            silver.repo_language 정규화 결과 (PullRequestEvent payload 기반, 미식별은 Unknown)
+            하루 24시간 동안 코드 push / PR / star / fork / issue 등 활동이 어떤 시간대에 몰리는지 보여줍니다.
         </p>
     </div>
 </section>
@@ -164,7 +325,7 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41L13.42 20.58a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
             카테고리별 트렌딩
         </h2>
-        <span class="categories-sub">Bedrock Claude 자동 분류 · 6개 카테고리</span>
+        <span class="categories-sub">AI 자동 분류 · 6개 분야</span>
     </div>
     <div class="categories-grid" id="categories-grid"></div>
 </section>
@@ -173,11 +334,57 @@
 {% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 <script>
-const DEMO_DATE = "2026-04-29";
+function yesterdayUTC() {
+    const d = new Date();
+    d.setUTCDate(d.getUTCDate() - 1);
+    return d.toISOString().slice(0, 10);
+}
+function todayUTC() {
+    return new Date().toISOString().slice(0, 10);
+}
+
 const params = new URLSearchParams(window.location.search);
-const insightDate = params.get("date") || DEMO_DATE;
+const insightDate = params.get("date") || yesterdayUTC();
 
 document.getElementById("insights-date").textContent = insightDate;
+
+// ─── 날짜 picker 초기화 ───────────────────────────────
+(function setupDatePicker() {
+    const input = document.getElementById("date-picker");
+    const shortcut = document.getElementById("date-picker-shortcut");
+    if (!input) return;
+
+    input.value = insightDate;
+    input.max = todayUTC();          // 오늘 이후는 의미 없음
+
+    function go(date) {
+        if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return;
+        if (date === insightDate) return;
+        const url = new URL(window.location.href);
+        url.searchParams.set("date", date);
+        window.location.href = url.toString();
+    }
+    input.addEventListener("change", (e) => go(e.target.value));
+
+    // OpenSearch 에 색인된 날짜 목록 — 빠른 선택용
+    fetch("/api/insights/dates", { credentials: "same-origin" })
+        .then(r => r.ok ? r.json() : null)
+        .then(data => {
+            if (!data || !data.dates || !data.dates.length) {
+                shortcut.style.display = "none";
+                return;
+            }
+            // 최신순으로 가장 위. 어제 추가 (없을 수 있음)
+            const dates = [...new Set([yesterdayUTC(), ...data.dates])]
+                .sort()
+                .reverse();
+            shortcut.innerHTML =
+                `<option value="">최근 분석 ▾</option>` +
+                dates.map(d => `<option value="${d}" ${d===insightDate?'selected':''}>${d}</option>`).join("");
+            shortcut.addEventListener("change", (e) => go(e.target.value));
+        })
+        .catch(() => { shortcut.style.display = "none"; });
+})();
 
 async function loadInsights() {
     const loading = document.getElementById("insights-loading");
@@ -391,7 +598,7 @@ function renderCategories(rows) {
     document.getElementById("categories").style.display = "block";
 }
 
-// ─── F4: 언어 활동 히트맵 ─────────────────────────────
+// ─── F4: 시간대별 활동 패턴 ─────────────────────────────
 async function loadLanguageHeatmap() {
     try {
         const res = await fetch(`/api/language/heatmap?date=${insightDate}`, {
@@ -403,7 +610,7 @@ async function loadLanguageHeatmap() {
         renderLanguageHeatmap(data);
         document.getElementById("language-heatmap").style.display = "block";
     } catch (e) {
-        console.warn("language heatmap load failed:", e);
+        console.warn("activity heatmap load failed:", e);
     }
 }
 
@@ -412,17 +619,23 @@ function renderLanguageHeatmap(data) {
     const legend = document.getElementById("lang-heatmap-legend");
     const { hours, languages, matrix, totals } = data;
 
-    // 가장 큰 셀 값으로 정규화 (시각적 대비). log1p 로 분포 펼침.
+    // UTC hour → KST hour 회전. data.matrix[h] 가 UTC h 시 데이터이므로
+    // KST 0시 = UTC 15시. 즉 표시 순서는 [UTC 15, 16, ..., 23, 0, 1, ..., 14] = KST [0, 1, ..., 23]
+    // 이를 위해 hour 인덱스를 KST 기준으로 회전.
+    const utcToKst = h => (h + 9) % 24;
+    const kstHours = Array.from({ length: 24 }, (_, k) => k);
+    const kstToUtc = k => (k + 24 - 9) % 24;
+
+    // 가장 큰 셀 값 (정규화) — UTC hour 기준 데이터 그대로
     let maxCell = 0;
     for (const row of matrix) for (const v of row) if (v > maxCell) maxCell = v;
     const log1pMax = Math.log1p(maxCell || 1);
 
-    // 헤더 (시간대) + 행 (언어별)
+    // 헤더 (KST 시간) — 짝수 시간만 라벨
     let html = '<div class="hm-row hm-row--head">';
     html += '<div class="hm-cell hm-cell--rowhead"></div>';
-    for (const h of hours) {
-        // 짝수 시간만 라벨 — 가독성
-        const label = h % 2 === 0 ? String(h).padStart(2, '0') : '';
+    for (const k of kstHours) {
+        const label = k % 2 === 0 ? String(k).padStart(2, '0') : '';
         html += `<div class="hm-cell hm-cell--colhead">${label}</div>`;
     }
     html += '</div>';
@@ -430,28 +643,28 @@ function renderLanguageHeatmap(data) {
     languages.forEach((lang, langIdx) => {
         html += '<div class="hm-row">';
         const total = (totals[lang] || 0).toLocaleString();
-        html += `<div class="hm-cell hm-cell--rowhead" title="${lang}: ${total} events">
+        html += `<div class="hm-cell hm-cell--rowhead" title="${lang}: ${total}건">
                     <span class="hm-lang">${lang}</span>
                     <span class="hm-lang-total">${total}</span>
                  </div>`;
-        for (const h of hours) {
-            const v = matrix[h][langIdx] || 0;
+        for (const k of kstHours) {
+            const u = kstToUtc(k);
+            const v = matrix[u][langIdx] || 0;
             const intensity = v > 0 ? Math.log1p(v) / log1pMax : 0;
             html += `<div class="hm-cell"
                           style="--c:${intensity.toFixed(3)}"
-                          title="${lang} · ${String(h).padStart(2,'0')}:00 UTC · ${v.toLocaleString()}"></div>`;
+                          title="${lang} · ${String(k).padStart(2,'0')}:00 KST · ${v.toLocaleString()}건"></div>`;
         }
         html += '</div>';
     });
 
     grid.innerHTML = html;
 
-    // 범례 (intensity 0 → max)
     const steps = [0, 0.25, 0.5, 0.75, 1.0];
     legend.innerHTML = `
         <span class="hm-legend-label">적음</span>
         ${steps.map(s => `<span class="hm-legend-cell" style="--c:${s}"></span>`).join("")}
-        <span class="hm-legend-label">많음 (max ${maxCell.toLocaleString()})</span>
+        <span class="hm-legend-label">많음 (최대 ${maxCell.toLocaleString()}건)</span>
     `;
 }
 
@@ -460,7 +673,7 @@ function buildDataTable(rows) {
     const table = document.getElementById("data-basis-table");
     const cols = ["repo_name","event_count","dominant_event_type",
                   "acceleration_ratio","anomaly_score","watch_zscore","rank_score"];
-    const headers = ["Repo","Events","Dominant","Acc","Anomaly","Watch-Z","Score"];
+    const headers = ["프로젝트","활동 수","주요 활동","가속도","이상 점수","관심 신호","종합 점수"];
 
     let html = "<table class='data-table'><thead><tr>";
     headers.forEach(h => { html += `<th>${h}</th>`; });
@@ -485,17 +698,229 @@ function buildDataTable(rows) {
 }
 
 function toggleDataBasis() {
-    const table = document.getElementById("data-basis-table");
+    const wrap = document.getElementById("data-basis-wrap");
     const btn = document.querySelector(".insights-data-toggle .btn");
-    if (table.style.display === "none") {
-        table.style.display = "block";
+    if (wrap.style.display === "none") {
+        wrap.style.display = "block";
         btn.textContent = "근거 데이터 닫기 ▴";
     } else {
-        table.style.display = "none";
+        wrap.style.display = "none";
         btn.textContent = "근거 데이터 보기 ▾";
     }
 }
 
 loadInsights();
+
+// ─── Live Pulse (streaming, 5초 폴링) ─────────────────────────
+(function () {
+    const $meta      = document.getElementById("live-pulse-meta");
+    const $now       = document.getElementById("live-pulse-now");
+    const $nowSub    = document.getElementById("live-pulse-now-sub");
+    const $totalEv   = document.getElementById("live-pulse-total-events");
+    const $totalAct  = document.getElementById("live-pulse-total-actors");
+    const $spark     = document.getElementById("live-pulse-spark");
+    const $top       = document.getElementById("live-pulse-top");
+
+    if (!$now) return;
+
+    const fmt = n => (n === null || n === undefined || isNaN(n))
+        ? "—" : Number(n).toLocaleString();
+
+    function drawSpark(svg, values) {
+        if (!svg || !values || !values.length) return;
+        const W = 600, H = 80, P = 4;
+        const max = Math.max(...values, 1);
+        const range = max || 1;
+        const step = (W - P * 2) / Math.max(values.length - 1, 1);
+        const pts = values.map((v, i) => {
+            const x = P + i * step;
+            const y = H - P - (v / range) * (H - P * 2);
+            return `${x.toFixed(1)},${y.toFixed(1)}`;
+        });
+        const linePath = `M ${pts.join(" L ")}`;
+        const last = values.length - 1;
+        const fillPath = `${linePath} L ${P + last * step},${H - P} L ${P},${H - P} Z`;
+        svg.innerHTML = `
+          <defs>
+            <linearGradient id="lp-grad-d" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#9A93E8" stop-opacity="0.55"/>
+              <stop offset="100%" stop-color="#9A93E8" stop-opacity="0"/>
+            </linearGradient>
+          </defs>
+          <path d="${fillPath}" fill="url(#lp-grad-d)"/>
+          <path d="${linePath}" fill="none" stroke="#9A93E8" stroke-width="1.6"
+                stroke-linecap="round" stroke-linejoin="round"/>
+        `;
+    }
+
+    function setStatus(connected, lag) {
+        if (!$meta) return;
+        if (connected === false) {
+            $meta.textContent = "연결 대기 중";
+            $meta.classList.add("is-stale");
+            return;
+        }
+        if (lag === null || lag === undefined) {
+            $meta.textContent = "연결됨 · 첫 활동 기다리는 중";
+        } else if (lag < 90) {
+            $meta.textContent = `${Math.floor(lag)}초 전에 마지막 활동`;
+        } else {
+            $meta.textContent = `${Math.floor(lag / 60)}분 전에 마지막 활동`;
+        }
+        $meta.classList.remove("is-stale");
+    }
+
+    function renderPulse(data) {
+        setStatus(data.connected, data.lag_seconds);
+        const cur = data.current_minute || {};
+        const buckets = data.buckets || [];
+        const totals = data.totals_window || {};
+
+        $now.textContent = fmt(cur.events || 0);
+        $nowSub.textContent = `${cur.events || 0}건 활동 · 프로젝트 ${cur.unique_repos || 0}개`;
+        $totalEv.textContent = fmt(totals.events);
+        $totalAct.textContent = fmt(totals.unique_actors);
+
+        drawSpark($spark, buckets.map(b => b.events || 0));
+    }
+
+    function renderTop(data) {
+        if (!$top) return;
+        const items = (data && data.items) || [];
+        if (!items.length) {
+            $top.innerHTML = `<span class="live-pulse-top-empty">5분 안에 활동 없음</span>`;
+            return;
+        }
+        $top.innerHTML = items.map((r, i) => `
+            <a class="live-pulse-top-chip" href="/repo/${r.repo_name}"
+               title="${r.repo_name} · ${r.events}건 활동 · ${r.primary_type}">
+                <span class="live-pulse-top-rank">${String(i + 1).padStart(2, "0")}</span>
+                <span class="live-pulse-top-name">${r.repo_name}</span>
+                <span class="live-pulse-top-events">${r.events}</span>
+            </a>
+        `).join("");
+    }
+
+    async function tick() {
+        try {
+            const [pRes, tRes] = await Promise.all([
+                fetch("/api/live/pulse", { credentials: "same-origin" }),
+                fetch("/api/live/top",   { credentials: "same-origin" }),
+            ]);
+            if (pRes.ok) renderPulse(await pRes.json());
+            if (tRes.ok) renderTop(await tRes.json());
+        } catch (e) {
+            setStatus(false, null);
+        }
+    }
+    tick();
+    setInterval(tick, 5000);
+})();
+
+// ─── 오늘 시간대별 진행 (hourly mart, 5분 폴링) ───────────────
+(function () {
+    const $chart = document.getElementById("today-hourly-chart");
+    const $axis  = document.getElementById("today-hourly-axis");
+    const $meta  = document.getElementById("today-hourly-meta");
+    const $top   = document.getElementById("today-hourly-top");
+    if (!$chart) return;
+
+    const fmt = n => Number(n || 0).toLocaleString();
+
+    // KST 시간 라벨 만들기 (UTC hour → KST hour)
+    function utcToKst(h) { return (h + 9) % 24; }
+
+    function todayUTC() {
+        return new Date().toISOString().slice(0, 10);
+    }
+
+    function drawChart(hours) {
+        // KST 0~23 시간으로 펼친 배열로 정렬
+        // hours: [{hour: utc-hour, hour_kst, events, ...}]
+        const W = 720, H = 160, P = 28;
+        const kstSlots = Array(24).fill(null).map((_, k) => ({ kst: k, events: 0 }));
+        for (const r of hours) {
+            const k = (r.hour_kst != null) ? r.hour_kst : utcToKst(r.hour);
+            if (k >= 0 && k < 24) kstSlots[k].events = r.events || 0;
+        }
+        const max = Math.max(...kstSlots.map(s => s.events), 1);
+        const barW = (W - P*2) / 24;
+        const innerH = H - P*2;
+
+        const bars = kstSlots.map((s, i) => {
+            const x = P + i * barW;
+            const h = (s.events / max) * innerH;
+            const y = H - P - h;
+            const opacity = s.events > 0 ? 0.85 : 0.18;
+            return `<rect x="${(x+1).toFixed(1)}" y="${y.toFixed(1)}"
+                          width="${(barW-2).toFixed(1)}" height="${Math.max(h,1).toFixed(1)}"
+                          rx="3"
+                          fill="#9A93E8" fill-opacity="${opacity.toFixed(2)}">
+                      <title>${String(s.kst).padStart(2,'0')}시 · ${fmt(s.events)}건 활동</title>
+                    </rect>`;
+        }).join("");
+
+        // baseline
+        const baseline = `<line x1="${P}" y1="${H-P}" x2="${W-P}" y2="${H-P}"
+                               stroke="rgba(255,255,255,0.08)" stroke-width="1"/>`;
+        $chart.innerHTML = baseline + bars;
+
+        // X축 KST 시간 라벨 (4시간 간격)
+        const labels = [0, 4, 8, 12, 16, 20, 23];
+        const axisHtml = labels.map((k, idx) => {
+            const x = P + k * barW + barW/2;
+            const pct = ((x - P) / (W - P*2)) * 100;
+            // 첫 라벨(0시)는 left-align, 마지막(23시)는 right-align — 컨테이너 밖으로 안 잘리게
+            let style = `left:${pct.toFixed(2)}%`;
+            let extraClass = "";
+            if (idx === 0) {
+                style = `left:0`;
+                extraClass = " today-hourly-axis-label--start";
+            } else if (idx === labels.length - 1) {
+                style = `right:0`;
+                extraClass = " today-hourly-axis-label--end";
+            }
+            return `<span class="today-hourly-axis-label${extraClass}" style="${style}">${String(k).padStart(2,'0')}시</span>`;
+        }).join("");
+        $axis.innerHTML = axisHtml;
+    }
+
+    function renderTop(items) {
+        if (!items || !items.length) {
+            $top.innerHTML = `<span class="today-hourly-top-empty">아직 집계된 데이터가 없습니다.</span>`;
+            return;
+        }
+        $top.innerHTML = items.map((r, i) => `
+            <a class="today-hourly-top-chip" href="/repo/${r.repo_name}"
+               title="${r.repo_name} · ${fmt(r.events)}건 활동 · ${r.primary_type}">
+                <span class="today-hourly-top-rank">${String(i + 1).padStart(2, "0")}</span>
+                <span class="today-hourly-top-name">${r.repo_name}</span>
+                <span class="today-hourly-top-events">${fmt(r.events)}</span>
+            </a>
+        `).join("");
+    }
+
+    async function tick() {
+        try {
+            const date = todayUTC();
+            const res = await fetch(`/api/hourly/today?date=${date}`, { credentials: "same-origin" });
+            if (res.status === 401 || res.status === 403) return;
+            if (!res.ok) throw new Error("HTTP " + res.status);
+            const data = await res.json();
+            const hours = data.hours || [];
+            const totalEvents = (data.totals && data.totals.events) || 0;
+            const filledHours = hours.filter(h => (h.events || 0) > 0).length;
+            $meta.textContent = filledHours === 0
+                ? "오늘의 첫 시간대 정리 대기 중"
+                : `오늘 ${filledHours}시간 누적 · 총 ${fmt(totalEvents)}건의 활동`;
+            drawChart(hours);
+            renderTop(data.top_repos || []);
+        } catch (e) {
+            $meta.textContent = "갱신 실패 — 잠시 후 재시도";
+        }
+    }
+    tick();
+    setInterval(tick, 5 * 60 * 1000);  // 5분마다 갱신 (mart 자체가 매시 갱신)
+})();
 </script>
 {% endblock %}

@@ -126,11 +126,15 @@ normalized AS (
         public,
         CAST(replace(replace(created_at, 'T', ' '), 'Z', '') AS timestamp) AS created_at,
         org_login,
-        -- 언어 후보: PR head/base, repository.language 우선순위
+        -- 언어 후보: PR head/base / repository / forkee / release.author.repo
+        -- 상위부터 더 구체적인 출처 우선. 한 이벤트에 여러 후보가 있으면 첫 non-null 채택.
         COALESCE(
             json_extract_scalar(payload, '$.pull_request.head.repo.language'),
             json_extract_scalar(payload, '$.pull_request.base.repo.language'),
-            json_extract_scalar(payload, '$.repository.language')
+            json_extract_scalar(payload, '$.repository.language'),
+            json_extract_scalar(payload, '$.forkee.language'),
+            json_extract_scalar(payload, '$.release.author.repo.language'),
+            json_extract_scalar(payload, '$.head_commit.repo.language')
         )                                                          AS lang_raw,
         source,
         year, month, day, hour
@@ -177,7 +181,9 @@ FROM normalized
 @dag(
     dag_id="bronze_to_silver",
     start_date=datetime(2026, 4, 27, tzinfo=timezone.utc),
-    schedule="0 2 * * *",
+    # 매일 00:30 UTC = KST 09:30 — UTC day 의 마지막 hour 데이터가 GHArchive 에
+    # 도착하길 30분 정도 기다리는 안전 buffer. 더 빨리는 GHArchive lag 때문에 무리.
+    schedule="30 0 * * *",
     catchup=True,
     max_active_runs=2,
     default_args={"owner": "jin", "retries": 1, "retry_delay": timedelta(minutes=5)},

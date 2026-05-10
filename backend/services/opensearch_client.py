@@ -191,6 +191,14 @@ def index_daily(
                 "insight_markdown":   insight_markdown,
                 "indexed_at":         now_iso,
             }
+            # 카테고리 필드 — insights_service 가 inline batch 분류한 결과를 row 에
+            # 채워주면 같이 색인. 없으면 기존 OpenSearch 의 카테고리 그대로 유지.
+            if row.get("category"):
+                doc["category"] = row["category"]
+                doc["category_confidence"] = _safe_float(row.get("category_confidence"))
+                if row.get("category_reasoning"):
+                    doc["category_reasoning"] = row["category_reasoning"]
+                doc["categorized_at"] = now_iso
             yield {
                 "_op_type": "update",  # upsert 의미 (동일 _id면 덮어쓰기)
                 "_index": INDEX_NAME,
@@ -205,6 +213,54 @@ def index_daily(
         logger.warning("Bulk index errors (first 3): %s", errors[:3])
     logger.info("Indexed %d docs into %s for date=%s", success, INDEX_NAME, date)
     return {"indexed": success, "errors": error_count}
+
+
+# ─── 단일 repo 인사이트 캐시 (Repo 상세 페이지) ────────────
+
+def get_repo_insight(date: str, repo_name: str) -> str | None:
+    """특정 날짜·repo 의 캐시된 단일 인사이트 마크다운 조회.
+
+    Returns: markdown string 또는 None (doc 자체가 없거나 필드가 없을 때)
+    """
+    client = _get_client()
+    doc_id = _build_doc_id(date, repo_name)
+    try:
+        resp = client.get(index=INDEX_NAME, id=doc_id, _source_includes=["repo_insight_markdown"])
+        return resp.get("_source", {}).get("repo_insight_markdown")
+    except NotFoundError:
+        return None
+    except Exception as e:
+        logger.warning("get_repo_insight failed (%s): %s", doc_id, e)
+        return None
+
+
+def cache_repo_insight(date: str, repo_name: str, markdown: str) -> bool:
+    """특정 날짜·repo 의 단일 인사이트 마크다운을 OpenSearch 에 캐시.
+
+    - doc_as_upsert=True 라 doc 이 없어도 새로 만들어서 저장
+    - 기존 다른 필드 (event_count, category 등) 는 건드리지 않음 (partial update)
+    """
+    client = _get_client()
+    doc_id = _build_doc_id(date, repo_name)
+    now_iso = datetime.utcnow().isoformat() + "Z"
+    try:
+        client.update(
+            index=INDEX_NAME,
+            id=doc_id,
+            body={
+                "doc": {
+                    "date": date,
+                    "repo_name": repo_name,
+                    "repo_insight_markdown": markdown,
+                    "repo_insight_generated_at": now_iso,
+                },
+                "doc_as_upsert": True,
+            },
+        )
+        return True
+    except Exception as e:
+        logger.warning("cache_repo_insight failed (%s): %s", doc_id, e)
+        return False
 
 
 # ─── 검색 ──────────────────────────────────────────────────
@@ -255,6 +311,34 @@ def search(query: str, size: int = 10) -> dict[str, Any]:
         for h in resp["hits"]["hits"]
     ]
     return {"total": total, "hits": hits}
+
+
+def list_dates(size: int = 30) -> list[str]:
+    """색인된 모든 date 값 (YYYY-MM-DD) 의 distinct 목록을 최신순으로 반환.
+
+    대시보드 / repo 페이지에서 사용 가능한 분석 날짜 picker 채울 때 사용.
+    인덱스가 없거나 비었으면 빈 리스트.
+    """
+    ensure_index()
+    client = _get_client()
+    body = {
+        "size": 0,
+        "aggs": {
+            "dates": {
+                "terms": {
+                    "field": "date",
+                    "size": size,
+                    "order": {"_key": "desc"},
+                }
+            }
+        },
+    }
+    try:
+        resp = client.search(index=INDEX_NAME, body=body)
+    except NotFoundError:
+        return []
+    buckets = resp.get("aggregations", {}).get("dates", {}).get("buckets", [])
+    return [b["key"] for b in buckets if b.get("key")]
 
 
 def get_by_date(date: str, size: int = 10) -> dict[str, Any]:

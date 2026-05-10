@@ -1,8 +1,16 @@
-"""F4 언어 활동 히트맵 API.
+"""F4 시간대별 활동 패턴 히트맵 API.
 
-- GET /api/language/heatmap?date=YYYY-MM-DD
-  -> { date, hours: [0..23], languages: [...], matrix: [[..]], totals: {...} }
+원래 "언어 활동 히트맵" 이었지만, GitHub Events payload 에서
+language 필드가 추출되는 비율이 너무 낮아 (~30% 미만, 대부분 Unknown)
+유의미한 시각화가 어려움. 차원을 **이벤트 타입** 으로 전환.
 
+- 모든 GitHub Events 는 type 필드를 100% 가짐 (PushEvent, WatchEvent, ...)
+- KST 기준 시간대 표시 (UTC+9 변환은 프론트에서)
+
+GET /api/language/heatmap?date=YYYY-MM-DD
+  -> { date, hours: [0..23], languages: [type, ...], matrix, totals, coverage }
+
+응답 키 이름은 호환을 위해 유지 (`languages` = 표시할 행, 여기선 이벤트 타입).
 승인된 사용자만 조회 가능.
 """
 import asyncio
@@ -20,72 +28,80 @@ router = APIRouter()
 
 _DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
-# 표시할 상위 언어 개수 (이외는 'Other' 로 합산)
-_TOP_N_LANGUAGES = 10
+# 사용자가 직관적으로 알아볼 수 있게 type 별 표시 이름 매핑
+# 라벨은 짧게 — 좁은 rowhead 칸에 깔끔하게 들어가도록.
+_TYPE_DISPLAY = {
+    "PushEvent": "Push",
+    "PullRequestEvent": "PR",
+    "PullRequestReviewEvent": "PR 리뷰",
+    "PullRequestReviewCommentEvent": "PR 코멘트",
+    "IssuesEvent": "Issue",
+    "IssueCommentEvent": "Issue 코멘트",
+    "WatchEvent": "Star",
+    "ForkEvent": "Fork",
+    "CreateEvent": "생성",
+    "DeleteEvent": "삭제",
+    "ReleaseEvent": "Release",
+    "PublicEvent": "공개",
+    "GollumEvent": "Wiki",
+    "MemberEvent": "멤버",
+    "CommitCommentEvent": "Commit 코멘트",
+}
 
 _HEATMAP_SQL = """
 SELECT
   CAST(hour AS integer)              AS hour,
-  language,
-  CAST(SUM(event_count) AS bigint)    AS event_count,
-  CAST(SUM(unique_repos) AS bigint)    AS unique_repos
-FROM oi.gold_language_activity
+  type                                AS type_raw,
+  CAST(COUNT(*) AS bigint)            AS event_count,
+  CAST(COUNT(DISTINCT repo_id) AS bigint) AS unique_repos
+FROM oi.silver_events
 WHERE year='{year}' AND month='{month}' AND day='{day}'
-GROUP BY CAST(hour AS integer), language
+GROUP BY CAST(hour AS integer), type
 ORDER BY hour, event_count DESC
 """
 
 
 def _build_heatmap(rows: list[dict]) -> dict:
-    """Athena 결과(긴 형식) → 프런트가 그리기 쉬운 wide 매트릭스로 정리.
+    """Athena 결과(긴 형식) → 프런트 wide 매트릭스.
 
-    - language 별 합계 산정 후 상위 N 만 유지 (그 외는 'Other' 로 합산)
-    - 0 시간대는 0 으로 채움
+    - type 별 합계 산정 후 활동량 많은 순서대로 표시
+    - 표시명은 _TYPE_DISPLAY 매핑 적용 (없으면 원본)
     """
-    # 언어별 총합
-    totals_by_lang: dict[str, int] = {}
+    totals_by_type: dict[str, int] = {}
     for r in rows:
-        lang = r.get("language") or "Unknown"
-        totals_by_lang[lang] = totals_by_lang.get(lang, 0) + int(r.get("event_count") or 0)
+        t = r.get("type_raw") or "Unknown"
+        totals_by_type[t] = totals_by_type.get(t, 0) + int(r.get("event_count") or 0)
 
-    # 상위 N 언어 + Other
-    top_langs = [
-        l for l, _ in sorted(totals_by_lang.items(), key=lambda kv: kv[1], reverse=True)[:_TOP_N_LANGUAGES]
-    ]
-    if "Unknown" in top_langs:
-        # Unknown 은 상위에서 빼고 항상 마지막에 두기 (가독성)
-        top_langs = [l for l in top_langs if l != "Unknown"] + ["Unknown"]
-    other_langs = set(totals_by_lang.keys()) - set(top_langs)
-    has_other = bool(other_langs)
-    languages = top_langs + (["Other"] if has_other else [])
+    # 활동량 많은 순으로 정렬
+    sorted_types = sorted(totals_by_type.items(), key=lambda kv: kv[1], reverse=True)
+    raw_types = [t for t, _ in sorted_types]
+    display_types = [_TYPE_DISPLAY.get(t, t) for t in raw_types]
 
     hours = list(range(24))
-    matrix = [[0 for _ in languages] for _ in hours]
+    matrix = [[0 for _ in raw_types] for _ in hours]
+    type_to_idx = {t: i for i, t in enumerate(raw_types)}
 
-    lang_to_idx = {l: i for i, l in enumerate(languages)}
     for r in rows:
         try:
             h = int(r["hour"])
             count = int(r["event_count"] or 0)
         except (KeyError, TypeError, ValueError):
             continue
-        lang = r.get("language") or "Unknown"
-        idx = lang_to_idx.get(lang)
-        if idx is None and has_other:
-            idx = lang_to_idx["Other"]
+        t = r.get("type_raw") or "Unknown"
+        idx = type_to_idx.get(t)
         if idx is None:
             continue
         if 0 <= h <= 23:
             matrix[h][idx] += count
 
-    # 표시용 totals — 상위 N 언어만 (Other 별도 표시)
-    display_totals = {l: totals_by_lang.get(l, 0) for l in top_langs}
-    if has_other:
-        display_totals["Other"] = sum(totals_by_lang[l] for l in other_langs)
+    display_totals = {
+        _TYPE_DISPLAY.get(t, t): cnt for t, cnt in sorted_types
+    }
 
+    # 응답 키는 호환을 위해 유지 ("languages" = 행 라벨)
     return {
         "hours": hours,
-        "languages": languages,
+        "languages": display_types,
         "matrix": matrix,
         "totals": display_totals,
         "row_count": sum(sum(r) for r in matrix),
@@ -97,7 +113,7 @@ async def language_heatmap(
     date: str = Query(..., example="2026-04-29"),
     user: User = Depends(get_current_user),
 ):
-    """일별 언어 활동 히트맵 — gold_language_activity 마트에서 직접 조회."""
+    """일별 활동 패턴 히트맵 — silver_events 의 hour × event_type 분포."""
     if not _DATE_RE.match(date):
         raise HTTPException(status_code=400, detail="date 형식은 YYYY-MM-DD 이어야 합니다.")
 
@@ -106,9 +122,16 @@ async def language_heatmap(
     try:
         rows = await asyncio.to_thread(athena_client.query, sql, 60)
     except Exception as e:
-        logger.exception("language heatmap query failed user=%s", user.username)
+        logger.exception("activity heatmap query failed user=%s", user.username)
         raise HTTPException(status_code=500, detail=f"Query failed: {e}")
 
     payload = _build_heatmap(rows)
     payload["date"] = date
+    # coverage: 이벤트 타입은 모든 이벤트가 100% 가짐
+    total_events = sum(payload["totals"].values())
+    payload["coverage"] = {
+        "total_events": total_events,
+        "known_events": total_events,
+        "known_pct": 100.0,
+    }
     return payload
